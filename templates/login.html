@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Σύνδεση — Finance Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-body">
+<div class="auth-wrap">
+    <div class="auth-card">
+        <div class="auth-brand">
+            <span class="auth-icon">◈</span>
+            <span class="auth-title">Finance Manager</span>
+        </div>
+        <h2 class="auth-heading">Σύνδεση</h2>
+        {% if error %}
+        <div class="auth-error">{{ error }}</div>
+        {% endif %}
+        <form method="POST" action="/login" class="auth-form">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" placeholder="Το username σου" required autofocus>
+            </div>
+            <div class="form-group">
+                <label>Κωδικός</label>
+                <div class="pw-wrap">
+                    <input type="password" name="password" id="loginPw" placeholder="••••••••" required>
+                    <button type="button" class="pw-toggle" onclick="togglePw('loginPw', this)">👁</button>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary auth-btn">Σύνδεση</button>
+        </form>
+        <div class="auth-footer">
+            Δεν έχεις λογαριασμό; <a href="/register">Εγγραφή</a>
+        </div>
+    </div>
+    <div class="auth-clock">
+        <div id="authTime" class="auth-time-display">--:--:--</div>
+        <div id="authDate" class="auth-date-display">--/--/----</div>
+    </div>
+</div>
+<script>
+function togglePw(id, btn) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+function tick() {
+    const n = new Date(), pad = x => String(x).padStart(2,'0');
+    const days = ['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο'];
+    document.getElementById('authTime').textContent = `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+    document.getElementById('authDate').textContent = `${days[n.getDay()]} ${pad(n.getDate())}/${pad(n.getMonth()+1)}/${n.getFullYear()}`;
+}
+tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>

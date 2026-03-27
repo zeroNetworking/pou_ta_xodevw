@@ -1,2 +1,45 @@
-# finance_in_n_out
-get your money 
+# Finance Manager — Διαχείριση Εσόδων & Εξόδων
+
+## Εγκατάσταση & Εκκίνηση
+
+### 1. Εγκατάσταση εξαρτήσεων
+```bash
+pip install flask
+```
+
+### 2. Εκκίνηση εφαρμογής
+```bash
+cd finance_app
+python app.py
+```
+
+### 3. Άνοιγμα στον browser
+http://127.0.0.1:5000
+
+---
+
+## Λειτουργίες
+
+- **Νέος Μήνας**: Κλικ στο "Νέος Μήνας" στο sidebar
+- **Κινήσεις**: Προσθήκη/επεξεργασία/διαγραφή εσόδων και εξόδων
+- **Budget**: Ορισμός μηνιαίου προϋπολογισμού ανά κατηγορία
+- **Analytics**: Γραφήματα και στατιστικά όλων των μηνών
+- **Export CSV**: Εξαγωγή κινήσεων σε Excel-friendly CSV
+- **Αναζήτηση**: Αναζήτηση σε όλες τις κινήσεις
+
+## Δομή Project
+```
+finance_app/
+├── app.py              ← Flask backend
+├── database.db         ← SQLite (δημιουργείται αυτόματα)
+├── requirements.txt
+├── templates/          ← HTML σελίδες
+│   ├── base.html
+│   ├── index.html
+│   ├── month.html
+│   ├── analytics.html
+│   └── search.html
+└── static/
+    ├── css/style.css
+    └── js/main.js
+```

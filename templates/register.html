@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Εγγραφή — Finance Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-body">
+<div class="auth-wrap">
+    <div class="auth-card">
+        <div class="auth-brand">
+            <span class="auth-icon">◈</span>
+            <span class="auth-title">Finance Manager</span>
+        </div>
+        <h2 class="auth-heading">Δημιουργία Λογαριασμού</h2>
+
+        {% if errors %}
+        <div class="auth-errors">
+            {% for e in errors %}<div class="auth-error">{{ e }}</div>{% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="/register" class="auth-form" onsubmit="return validateForm()">
+            <div class="form-group">
+                <label>Username <span class="label-hint">(8–12 χαρακτήρες)</span></label>
+                <input type="text" name="username" id="regUser" placeholder="π.χ. AlexPapad1" minlength="8" maxlength="12" required>
+                <div class="field-hint" id="userHint"></div>
+            </div>
+            <div class="form-group">
+                <label>Κωδικός <span class="label-hint">(8+, κεφαλαίο, αριθμός, σύμβολο)</span></label>
+                <div class="pw-wrap">
+                    <input type="password" name="password" id="regPw" placeholder="••••••••" required>
+                    <button type="button" class="pw-toggle" onclick="togglePw('regPw', this)">👁</button>
+                </div>
+                <div class="pw-strength" id="pwStrength"></div>
+            </div>
+            <div class="form-group">
+                <label>Επιβεβαίωση Κωδικού</label>
+                <div class="pw-wrap">
+                    <input type="password" name="confirm" id="regConfirm" placeholder="••••••••" required>
+                    <button type="button" class="pw-toggle" onclick="togglePw('regConfirm', this)">👁</button>
+                </div>
+                <div class="field-hint" id="confirmHint"></div>
+            </div>
+            <button type="submit" class="btn btn-primary auth-btn">Δημιουργία Λογαριασμού</button>
+        </form>
+        <div class="auth-footer">
+            Έχεις ήδη λογαριασμό; <a href="/login">Σύνδεση</a>
+        </div>
+    </div>
+</div>
+<script>
+function togglePw(id, btn) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+
+const pwEl = document.getElementById('regPw');
+const strengthEl = document.getElementById('pwStrength');
+pwEl.addEventListener('input', function() {
+    const v = this.value;
+    let score = 0, tips = [];
+    if (v.length >= 8) score++; else tips.push('8+ χαρακτήρες');
+    if (/[A-Z]/.test(v)) score++; else tips.push('κεφαλαίο γράμμα');
+    if (/[0-9]/.test(v)) score++; else tips.push('αριθμό');
+    if (/[^A-Za-z0-9]/.test(v)) score++; else tips.push('σύμβολο (!@#...)');
+    const labels = ['','Αδύναμος','Μέτριος','Καλός','Ισχυρός'];
+    const colors = ['','#e74c3c','#f39c12','#3498db','#27ae60'];
+    strengthEl.innerHTML = v.length ? `<span style="color:${colors[score]}">${labels[score]}</span>${tips.length ? ' — λείπει: '+tips.join(', ') : ' ✓'}` : '';
+});
+
+document.getElementById('regConfirm').addEventListener('input', function() {
+    const hint = document.getElementById('confirmHint');
+    hint.textContent = this.value === pwEl.value ? '✓ Ταιριάζουν' : '✕ Δεν ταιριάζουν';
+    hint.style.color = this.value === pwEl.value ? '#27ae60' : '#e74c3c';
+});
+
+function validateForm() {
+    const u = document.getElementById('regUser').value;
+    const p = pwEl.value;
+    const c = document.getElementById('regConfirm').value;
+    if (u.length < 8 || u.length > 12) { alert('Username 8–12 χαρακτήρες'); return false; }
+    if (!/[A-Z]/.test(p) || !/[0-9]/.test(p) || !/[^A-Za-z0-9]/.test(p) || p.length < 8) {
+        alert('Ο κωδικός δεν πληροί τις απαιτήσεις'); return false;
+    }
+    if (p !== c) { alert('Οι κωδικοί δεν ταιριάζουν'); return false; }
+    return true;
+}
+</script>
+</body>
+</html>

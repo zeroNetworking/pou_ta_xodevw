@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Analytics</h1>
+        <p class="page-sub">Γενική ανάλυση οικονομικών</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card income-card">
+        <div class="stat-card-label">Συνολικά Έσοδα</div>
+        <div class="stat-card-value">+{{ "%.2f"|format(total_income) }}€</div>
+    </div>
+    <div class="stat-card expense-card">
+        <div class="stat-card-label">Συνολικά Έξοδα</div>
+        <div class="stat-card-value">-{{ "%.2f"|format(total_expense) }}€</div>
+    </div>
+    <div class="stat-card balance-card {% if total_balance >= 0 %}positive{% else %}negative{% endif %}">
+        <div class="stat-card-label">Συνολικό Υπόλοιπο</div>
+        <div class="stat-card-value">{{ "%.2f"|format(total_balance) }}€</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Μέσο Μηνιαίο Έξοδο</div>
+        <div class="stat-card-value">{{ "%.2f"|format(avg_expense) }}€</div>
+    </div>
+</div>
+
+{% if suggestions %}
+<div class="suggestions-block">
+    <div class="suggestions-title">💡 Προτάσεις</div>
+    {% for s in suggestions %}<div class="suggestion-item">{{ s }}</div>{% endfor %}
+</div>
+{% endif %}
+
+{% if analytics_data %}
+<div class="analytics-charts-row">
+    <div class="card">
+        <div class="card-header">Έσοδα vs Έξοδα ανά Μήνα</div>
+        <div style="padding:16px"><canvas id="monthChart"></canvas></div>
+    </div>
+    <div class="card">
+        <div class="card-header">Top Κατηγορίες Εξόδων</div>
+        <div style="padding:16px"><canvas id="catChart"></canvas></div>
+    </div>
+</div>
+
+<div class="card" style="margin-top:14px">
+    <div class="card-header">Ανά Μήνα</div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Μήνας</th><th>Έσοδα</th><th>Έξοδα</th><th>Υπόλοιπο</th><th>Κορυφαίο</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for d in analytics_data %}
+            <tr>
+                <td><strong>{{ d.name }}</strong></td>
+                <td class="income mono">+{{ "%.2f"|format(d.total_income) }}€</td>
+                <td class="expense mono">-{{ "%.2f"|format(d.total_expense) }}€</td>
+                <td class="{% if d.balance >= 0 %}positive{% else %}negative{% endif %} mono">{{ "%.2f"|format(d.balance) }}€</td>
+                <td>{{ d.top_expense_category or '—' }}</td>
+                <td><a href="{{ url_for('month_detail', month_id=d.id) }}" class="table-link">Άνοιγμα →</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">∿</div>
+    <div class="empty-title">Δεν υπάρχουν δεδομένα</div>
+    <div class="empty-sub">Πρόσθεσε κινήσεις σε μήνες για να δεις ανάλυση</div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Ίδια παλέτα 13 χρωμάτων παντού
+const PALETTE_13 = [
+    '#E74C3C','#27AE60','#F39C12','#E67E22','#9B59B6',
+    '#F06292','#E91E63','#1ABC9C','#3498DB','#8D6E63',
+    '#1A5276','#2ECC71','#95A5A6'
+];
+const CAT_ORDER = [
+    'Σπίτι & Λογαριασμοί','Σούπερ Μάρκετ','Φαγητό & Καφέδες Έξω',
+    'Μετακινήσεις & Όχημα','Διασκέδαση & Ταξίδια','Αγορές & Προσωπική Φροντίδα',
+    'Υγεία & Φαρμακείο','Εκπαίδευση & Πανεπιστήμιο','Συνδρομές & Gym',
+    'Κατοικίδια','Τραπεζικά & Revolut','Αποταμίευση & Επενδύσεις','Διάφορα / Έκτακτα'
+];
+const LEGACY = {
+    'Πανεπιστήμιο':'#1ABC9C','Πανεπιστήμιο (Βιβλία, Φωτοτυπίες)':'#1ABC9C',
+    'Ενοίκιο':'#E74C3C','Σούπερ μάρκετ':'#27AE60','Διάφορα':'#95A5A6',
+    'Βενζίνη':'#E67E22','Φαγητό έξω':'#F39C12','Καφέδες & Φούρνος':'#F39C12',
+    'Παραγγελίες (Delivery / Takeaway)':'#F39C12','Τέλη Κυκλοφορίας':'#E67E22',
+    'Διασκέδαση':'#9B59B6','Διασκέδαση (Ποτό, Σινεμά)':'#9B59B6',
+    'Αγορές (Ρούχα, Παπούτσια)':'#F06292','Φαρμακείο / Υγεία':'#E91E63',
+    'Εκπαίδευση / Μαθήματα':'#1ABC9C','Συνδρομές':'#3498DB',
+    'Συνδρομές (Netflix, Spotify, Gym)':'#3498DB',
+    'Κατοικίδια (Τροφή, Κτηνίατρος)':'#8D6E63','Τράπεζες (Revolut)':'#1A5276',
+    'Αποταμίευση / Επενδύσεις':'#2ECC71','Μετακινήσεις (Εισιτήρια, Διόδια)':'#E67E22',
+    'Λογαριασμοί (Κοινόχρηστα)':'#E74C3C','Service Αυτοκινήτου / Μηχανής':'#E67E22',
+};
+function getCatColor(name) {
+    const i = CAT_ORDER.indexOf(name);
+    if (i >= 0) return PALETTE_13[i];
+    if (LEGACY[name]) return LEGACY[name];
+    let h = 0;
+    for (let j = 0; j < name.length; j++) h = name.charCodeAt(j) + ((h<<5)-h);
+    return PALETTE_13[Math.abs(h) % 13];
+}
+
+const font = { family:'DM Sans', size:12 };
+const monoFont = { family:'DM Mono', size:11 };
+
+{% if analytics_data %}
+new Chart(document.getElementById('monthChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ analytics_data | map(attribute='name') | list | tojson }},
+        datasets: [
+            { label:'Έσοδα',  data: {{ analytics_data | map(attribute='total_income')  | list | tojson }}, backgroundColor:'#27AE60', borderRadius:4 },
+            { label:'Έξοδα',  data: {{ analytics_data | map(attribute='total_expense') | list | tojson }}, backgroundColor:'#E74C3C', borderRadius:4 }
+        ]
+    },
+    options: {
+        responsive:true, maintainAspectRatio:true,
+        plugins:{ legend:{ labels:{ font, color:'#555', boxWidth:12 } } },
+        scales:{
+            x:{ grid:{display:false}, ticks:{font, color:'#888'} },
+            y:{ grid:{color:'#f0f0f0'}, ticks:{font:monoFont, color:'#888', callback:v=>v+'€'} }
+        }
+    }
+});
+{% endif %}
+
+{% if top_categories %}
+const topCats   = {{ top_categories | map(attribute='category') | list | tojson }};
+const topTotals = {{ top_categories | map(attribute='total')    | list | tojson }};
+new Chart(document.getElementById('catChart'), {
+    type: 'bar',
+    data: {
+        labels: topCats,
+        datasets: [{ data:topTotals, backgroundColor:topCats.map(c=>getCatColor(c)), borderRadius:4 }]
+    },
+    options: {
+        indexAxis:'y', responsive:true, maintainAspectRatio:true,
+        plugins:{ legend:{display:false} },
+        scales:{
+            x:{ grid:{color:'#f0f0f0'}, ticks:{font:monoFont, color:'#888', callback:v=>v+'€'} },
+            y:{ grid:{display:false}, ticks:{font, color:'#555'} }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

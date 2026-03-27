@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub">Επισκόπηση οικονομικών</p>
+    </div>
+    <button class="btn btn-primary" onclick="openNewMonthModal()">＋ Νέος Μήνας</button>
+</div>
+
+<!-- Αναζήτηση μέσα στο Dashboard -->
+<div class="search-inline">
+    <input type="text" id="searchInput" class="search-bar" placeholder="⌕  Αναζήτηση κινήσεων...">
+    <button class="btn btn-ghost" onclick="doSearch()">Αναζήτηση</button>
+</div>
+
+{% if current_month %}
+<div class="current-month-banner">
+    <div>
+        <div class="banner-label">Τρέχων Μήνας</div>
+        <div class="banner-title">{{ current_month.name }}</div>
+    </div>
+    <a href="{{ url_for('month_detail', month_id=current_month.id) }}" class="btn btn-primary">Άνοιγμα →</a>
+</div>
+{% endif %}
+
+{% if months %}
+<div class="section-title">Όλοι οι Μήνες</div>
+<div class="months-grid">
+    {% for m in months %}
+    <div class="month-card-wrap">
+        <a href="{{ url_for('month_detail', month_id=m.id) }}" class="month-card" data-month-id="{{ m.id }}">
+            <div class="month-card-header">
+                <div class="month-card-name">{{ m.name }}</div>
+                {% if m.is_closed %}<span class="status-badge closed">Κλειστός</span>
+                {% else %}<span class="status-badge open">Ενεργός</span>{% endif %}
+            </div>
+            <div class="month-card-stats" id="stats-{{ m.id }}">
+                <div class="stat-loading">Φόρτωση...</div>
+            </div>
+        </a>
+        <button class="delete-month-btn" onclick="deleteMonth({{ m.id }}, '{{ m.name }}')" title="Διαγραφή μήνα">✕</button>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">◈</div>
+    <div class="empty-title">Δεν υπάρχουν μήνες</div>
+    <div class="empty-sub">Δημιούργησε τον πρώτο σου μήνα για να ξεκινήσεις</div>
+    <button class="btn btn-primary" onclick="openNewMonthModal()">＋ Νέος Μήνας</button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function doSearch() {
+    const q = document.getElementById('searchInput').value.trim();
+    if (q) window.location.href = `/search?q=${encodeURIComponent(q)}`;
+}
+document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+function deleteMonth(id, name) {
+    if (!confirm(`Διαγραφή μήνα "${name}"; Θα διαγραφούν και όλες οι κινήσεις του.`)) return;
+    fetch(`/delete_month/${id}`, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(d => { if (d.success) location.reload(); });
+}
+
+document.querySelectorAll('.month-card').forEach(card => {
+    const id = card.dataset.monthId;
+    fetch(`/api/month_stats/${id}`)
+        .then(r => r.json())
+        .then(s => {
+            const el = document.getElementById(`stats-${id}`);
+            const balClass = s.balance >= 0 ? 'positive' : 'negative';
+            el.innerHTML = `
+                <div class="stat-row"><span class="stat-label">Έσοδα</span><span class="stat-val income">+${s.total_income.toFixed(2)}€</span></div>
+                <div class="stat-row"><span class="stat-label">Έξοδα</span><span class="stat-val expense">-${s.total_expense.toFixed(2)}€</span></div>
+                <div class="stat-row stat-row-balance"><span class="stat-label">Υπόλοιπο</span><span class="stat-val ${balClass}">${s.balance.toFixed(2)}€</span></div>
+            `;
+        });
+});
+</script>
+{% endblock %}

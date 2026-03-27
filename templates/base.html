@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Οικονομικά{% endblock %} — Finance Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-icon">◈</span>
+            <span class="brand-name">Finance</span>
+        </div>
+
+        <!-- Live clock -->
+        <div class="sidebar-clock">
+            <div class="clock-time" id="clockTime">--:--:--</div>
+            <div class="clock-date" id="clockDate">-- / -- / ----</div>
+        </div>
+
+        <!-- User info -->
+        <div class="sidebar-user">
+            <span class="user-icon">◉</span>
+            <span class="user-name">{{ username }}</span>
+            <button class="privacy-btn" id="privacyToggle" onclick="togglePrivacy()" title="Απόκρυψη ποσών">👁</button>
+            <a href="/logout" class="logout-btn" title="Αποσύνδεση">⏻</a>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+                <span class="nav-icon">⊞</span><span>Dashboard</span>
+            </a>
+            <div class="nav-section-label">Μήνες</div>
+            <button class="nav-item new-month-btn" onclick="openNewMonthModal()">
+                <span class="nav-icon">＋</span><span>Νέος Μήνας</span>
+            </button>
+            {% if all_months is defined %}
+                {% for m in all_months %}
+                <a href="{{ url_for('month_detail', month_id=m.id) }}"
+                   class="nav-item nav-month {% if request.endpoint == 'month_detail' and month is defined and month.id == m.id %}active{% endif %}">
+                    <span class="nav-dot {% if m.is_closed %}closed{% endif %}">●</span>
+                    <span>{{ m.name }}</span>
+                    {% if m.is_closed %}<span class="closed-badge">✓</span>{% endif %}
+                </a>
+                {% endfor %}
+            {% endif %}
+            <div class="nav-section-label">Ανάλυση</div>
+            <a href="{{ url_for('analytics') }}" class="nav-item {% if request.endpoint == 'analytics' %}active{% endif %}">
+                <span class="nav-icon">∿</span><span>Analytics</span>
+            </a>
+            <a href="{{ url_for('search') }}" class="nav-item {% if request.endpoint == 'search' %}active{% endif %}">
+                <span class="nav-icon">⌕</span><span>Αναζήτηση</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<!-- New Month Modal -->
+<div class="modal-overlay" id="newMonthModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Νέος Μήνας</h3>
+            <button class="modal-close" onclick="closeNewMonthModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Μήνας</label>
+                <select id="newMonthSelect">
+                    <option value="1">Ιανουάριος</option><option value="2">Φεβρουάριος</option>
+                    <option value="3">Μάρτιος</option><option value="4">Απρίλιος</option>
+                    <option value="5">Μάιος</option><option value="6">Ιούνιος</option>
+                    <option value="7">Ιούλιος</option><option value="8">Αύγουστος</option>
+                    <option value="9">Σεπτέμβριος</option><option value="10">Οκτώβριος</option>
+                    <option value="11">Νοέμβριος</option><option value="12">Δεκέμβριος</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Έτος</label>
+                <input type="number" id="newYearInput" value="{{ now.year if now is defined else 2026 }}" min="2020" max="2035">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeNewMonthModal()">Ακύρωση</button>
+            <button class="btn btn-primary" onclick="createNewMonth()">Δημιουργία</button>
+        </div>
+    </div>
+</div>
+
+<!-- Suggest New Month Modal -->
+<div class="modal-overlay {% if suggest_new_month is defined and suggest_new_month %}active{% endif %}" id="suggestMonthModal">
+    <div class="modal">
+        <div class="modal-header"><h3>🗓 Νέος Μήνας</h3></div>
+        <div class="modal-body">
+            <p style="font-size:15px; margin-bottom:8px;">
+                Καλωσόρισες στον <strong>{{ greek_months[next_month] }} {{ next_year }}</strong>!
+            </p>
+            <p style="font-size:13px; color:#666;">Θέλεις να δημιουργηθεί αυτόματα ο νέος μήνας;</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="dismissSuggest()">Όχι τώρα</button>
+            <button class="btn btn-primary" onclick="confirmSuggestMonth({{ next_month if suggest_new_month is defined else 0 }}, {{ next_year if suggest_new_month is defined else 0 }})">
+                ✓ Δημιουργία {{ greek_months[next_month] if suggest_new_month is defined and suggest_new_month else '' }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

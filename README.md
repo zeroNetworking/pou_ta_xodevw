@@ -27,19 +27,3 @@ http://127.0.0.1:5000
 - **Export CSV**: Εξαγωγή κινήσεων σε Excel-friendly CSV
 - **Αναζήτηση**: Αναζήτηση σε όλες τις κινήσεις
 
-## Δομή Project
-```
-finance_app/
-├── app.py              ← Flask backend
-├── database.db         ← SQLite (δημιουργείται αυτόματα)
-├── requirements.txt
-├── templates/          ← HTML σελίδες
-│   ├── base.html
-│   ├── index.html
-│   ├── month.html
-│   ├── analytics.html
-│   └── search.html
-└── static/
-    ├── css/style.css
-    └── js/main.js
-```

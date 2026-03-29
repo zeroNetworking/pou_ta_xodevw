@@ -1,0 +1,612 @@
+{% extends "base.html" %}
+{% block title %}{{ month.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ month.name }}</h1>
+        <p class="page-sub">
+            {% if month.is_closed %}Κλειστός μήνας
+                {% if editable %} · <span class="editable-notice">Επεξεργάσιμος για {{ 5 - days_since_close }} ακόμα μέρες</span>{% endif %}
+            {% else %}Ενεργός μήνας{% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        {% if not month.is_closed %}
+        <button class="btn btn-ghost" onclick="openBudgetModal()">⚙ Budget</button>
+        <button class="btn btn-ghost" onclick="openFixedModal()">📌 Σταθερά Έξοδα</button>
+        <button class="btn btn-ghost" onclick="confirmCloseMonth({{ month.id }})">✓ Κλείσιμο</button>
+        {% else %}
+        <button class="btn btn-ghost" onclick="openFixedModal()">📌 Σταθερά Έξοδα</button>
+        {% endif %}
+    </div>
+</div>
+
+{% if alerts %}
+<div class="alerts-bar">
+    {% for a in alerts %}
+    <div class="alert-item alert-{{ a.level }}">{{ a.msg }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card income-card">
+        <div class="stat-card-label">Σύνολο Εσόδων</div>
+        <div class="stat-card-value">+{{ "%.2f"|format(stats.total_income) }}€</div>
+    </div>
+    <div class="stat-card expense-card">
+        <div class="stat-card-label">Σύνολο Εξόδων</div>
+        <div class="stat-card-value">-{{ "%.2f"|format(stats.total_expense) }}€</div>
+    </div>
+    <div class="stat-card balance-card {% if stats.balance >= 0 %}positive{% else %}negative{% endif %}">
+        <div class="stat-card-label">Υπόλοιπο</div>
+        <div class="stat-card-value">{{ "%.2f"|format(stats.balance) }}€</div>
+    </div>
+    {% if stats.top_expense_category %}
+    <div class="stat-card">
+        <div class="stat-card-label">Κορυφαίο Έξοδο</div>
+        <div class="stat-card-value top-cat">{{ stats.top_expense_category }}</div>
+        <div class="stat-card-sub">{{ "%.2f"|format(stats.top_expense_amount) }}€</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Fixed Expenses Reminder (always visible if set) -->
+{% if fixed_expenses %}
+<div class="fixed-reminder-bar">
+    <div class="fixed-reminder-title">📌 Σταθερά Έξοδα Μήνα</div>
+    <div class="fixed-reminder-list">
+        {% for fe in fixed_expenses %}
+        {% set status = fixed_status[fe.id] %}
+        <div class="fixed-item {% if status.paid %}paid{% endif %}" id="fi-{{ fe.id }}">
+            <button class="fixed-check" onclick="togglePaid({{ fe.id }}, {{ month.id }}, {{ 0 if status.paid else 1 }})"
+                    title="{% if status.paid %}Σημείωσε ως μη πληρωμένο{% else %}Σημείωσε ως πληρωμένο{% endif %}">
+                {% if status.paid %}✓{% else %}○{% endif %}
+            </button>
+            <span class="fixed-label">{{ fe.label }}</span>
+            {% if fe.amount %}<span class="fixed-amount">{{ "%.2f"|format(fe.amount) }}€</span>{% endif %}
+            {% if fe.category %}<span class="fixed-cat-tag">{{ fe.category }}</span>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- 3-column layout: φόρμα | κινήσεις | chart -->
+<div class="month-body-3col">
+
+    <!-- Στήλη 1: Φόρμα -->
+    <div class="col-form">
+        {% if not month.is_closed or editable %}
+        <div class="card">
+            <div class="card-header">Νέα Κίνηση</div>
+            <div class="form-tabs">
+                <button class="tab-btn" id="tab-income" onclick="switchTab('income',this)">Έσοδα</button>
+                <button class="tab-btn active" id="tab-expense" onclick="switchTab('expense',this)">Έξοδα</button>
+            </div>
+            <div class="form-group" id="mainCatGroup">
+                <label>Κατηγορία</label>
+                <select id="mainCat" onchange="updateSubCats()" class="cat-select-styled"></select>
+            </div>
+            <div class="form-group" id="subCatGroup">
+                <label>Υποκατηγορία</label>
+                <select id="subCat" class="cat-select-styled"></select>
+            </div>
+            <div class="form-group">
+                <label>Ποσό (€)</label>
+                <input type="number" id="amountInput" placeholder="0.00" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label>Ημερομηνία</label>
+                <input type="date" id="dateInput">
+            </div>
+            <div class="form-group">
+                <label>Περιγραφή (προαιρετικό)</label>
+                <input type="text" id="descInput" placeholder="...">
+            </div>
+            <input type="hidden" id="transType" value="expense">
+            <button class="btn btn-primary full-width" onclick="addTransaction({{ month.id }})">Προσθήκη</button>
+        </div>
+        {% elif month.is_closed and not editable %}
+        <div class="card late-info-card">
+            <div class="card-header">Ο μήνας έχει κλείσει</div>
+            <div class="late-info-body">
+                <p>Ο μήνας έκλεισε πριν από περισσότερες από 5 μέρες.</p>
+                <p>Χρησιμοποίησε την <strong>«Καθυστερημένη Καταχώρηση»</strong> από ενεργό μήνα.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Στήλη 2: Κινήσεις -->
+    <div class="col-trans">
+        <div class="card" style="height:100%">
+            <div class="card-header">
+                <span>Κινήσεις</span>
+                <span class="trans-count">{{ transactions|length }} εγγραφές</span>
+            </div>
+            {% if transactions %}
+            <div class="trans-list">
+                {% for t in transactions %}
+                <div class="trans-item {% if t.late_entry %}late-entry{% endif %}" id="trans-{{ t.id }}">
+                    <div class="trans-left">
+                        <span class="trans-dot {% if t.type=='income' %}income{% else %}expense{% endif %}">●</span>
+                        <div>
+                            <div class="trans-cat">
+                                {{ t.category }}{% if t.subcategory %} <span class="sub-tag">{{ t.subcategory }}</span>{% endif %}
+                                {% if t.late_entry %}<span class="late-badge">⏱ Καθυστερημένη</span>{% endif %}
+                            </div>
+                            <div class="trans-date">{{ t.transaction_date }}{% if t.description %} · {{ t.description }}{% endif %}</div>
+                            {% if t.late_entry and t.late_entry_note %}<div class="late-note">{{ t.late_entry_note }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="trans-right">
+                        <span class="trans-amount {% if t.type=='income' %}income{% else %}expense{% endif %}">
+                            {% if t.type=='income' %}+{% else %}-{% endif %}{{ "%.2f"|format(t.amount) }}€
+                        </span>
+                        {% if not month.is_closed or editable %}
+                        <div class="trans-actions">
+                            <button class="icon-btn" onclick="editTrans({{ t.id }},'{{ t.category }}','{{ t.subcategory or '' }}','{{ t.type }}',{{ t.amount }},'{{ t.description or '' }}','{{ t.transaction_date }}')">✎</button>
+                            <button class="icon-btn danger" onclick="deleteTrans({{ t.id }})">✕</button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-trans">Δεν υπάρχουν κινήσεις ακόμα</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Στήλη 3: Chart -->
+    <div class="col-chart">
+        {% if expense_by_cat %}
+        <div class="card" style="height:100%">
+            <div class="card-header">Έξοδα ανά Κατηγορία</div>
+            <div class="chart-col-body">
+                <canvas id="expenseChart"></canvas>
+                <div id="chartLegend" class="chart-legend-col"></div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card chart-empty-card">
+            <div class="card-header">Έξοδα ανά Κατηγορία</div>
+            <div class="chart-empty">Δεν υπάρχουν έξοδα ακόμα</div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Late Entry section (only in open months) -->
+{% if not month.is_closed and closed_months %}
+<div class="card late-entry-card">
+    <div class="card-header">⏱ Καθυστερημένη Καταχώρηση σε Κλειστό Μήνα</div>
+    <div class="late-entry-body">
+        <p class="late-hint">Ξέχασες κάτι από προηγούμενο μήνα; Θα εμφανιστεί με ειδική σήμανση.</p>
+        <div class="late-form-grid">
+            <div class="form-group">
+                <label>Μήνας αναφοράς</label>
+                <select id="lateMonthSel">{% for cm in closed_months %}<option value="{{ cm.id }}">{{ cm.name }}</option>{% endfor %}</select>
+            </div>
+            <div class="form-group">
+                <label>Τύπος</label>
+                <select id="lateType" onchange="updateLateCats()"><option value="expense">Έξοδο</option><option value="income">Έσοδο</option></select>
+            </div>
+            <div class="form-group">
+                <label>Κατηγορία</label>
+                <select id="lateMainCat" onchange="updateLateSubCats()"></select>
+            </div>
+            <div class="form-group">
+                <label>Υποκατηγορία</label>
+                <select id="lateSubCat"></select>
+            </div>
+            <div class="form-group">
+                <label>Ποσό (€)</label>
+                <input type="number" id="lateAmount" placeholder="0.00" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label>Ημερομηνία</label>
+                <input type="date" id="lateDate">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Σημείωση</label>
+            <input type="text" id="lateNote" placeholder="π.χ. Ξεχασμένο τιμολόγιο Φεβρουαρίου">
+        </div>
+        <button class="btn btn-primary" style="margin-top:10px" onclick="addLateEntry()">Καταχώρηση</button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal">
+        <div class="modal-header"><h3>Επεξεργασία Κίνησης</h3><button class="modal-close" onclick="document.getElementById('editModal').classList.remove('active')">✕</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="editId">
+            <div class="form-group"><label>Τύπος</label>
+                <select id="editType" onchange="updateEditCats()"><option value="expense">Έξοδο</option><option value="income">Έσοδο</option></select></div>
+            <div class="form-group"><label>Κατηγορία</label><select id="editMainCat" onchange="updateEditSubCats()" class="cat-select-styled"></select></div>
+            <div class="form-group" id="editSubGroup"><label>Υποκατηγορία</label><select id="editSubCat" class="cat-select-styled"></select></div>
+            <div class="form-group"><label>Ποσό (€)</label><input type="number" id="editAmount" step="0.01" min="0"></div>
+            <div class="form-group"><label>Ημερομηνία</label><input type="date" id="editDate"></div>
+            <div class="form-group"><label>Περιγραφή</label><input type="text" id="editDesc"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="document.getElementById('editModal').classList.remove('active')">Ακύρωση</button>
+            <button class="btn btn-primary" onclick="saveEdit()">Αποθήκευση</button>
+        </div>
+    </div>
+</div>
+
+<!-- Budget Modal -->
+<div class="modal-overlay" id="budgetModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal modal-wide">
+        <div class="modal-header"><h3>⚙ Προϋπολογισμός ανά Κατηγορία</h3><button class="modal-close" onclick="document.getElementById('budgetModal').classList.remove('active')">✕</button></div>
+        <div class="modal-body">
+            <p class="modal-hint">Ορισμός μηνιαίου budget. Θα ειδοποιηθείς στο 75%, 90% και 100%.</p>
+            {% for cat in expense_tree.keys() %}
+            <div class="budget-row">
+                <div class="budget-cat-wrap">
+                    <span class="budget-color-dot" style="background:{{ cat_colors[cat] }}"></span>
+                    <span class="budget-cat">{{ cat }}</span>
+                </div>
+                <div class="budget-input-wrap">
+                    <input type="number" class="budget-input" data-cat="{{ cat }}"
+                           value="{{ budgets.get(cat, '') }}" placeholder="0" step="1" min="0">
+                    <span class="budget-euro">€</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="document.getElementById('budgetModal').classList.remove('active')">Κλείσιμο</button>
+            <button class="btn btn-primary" onclick="saveBudgets()">Αποθήκευση</button>
+        </div>
+    </div>
+</div>
+
+<!-- Fixed Expenses Modal -->
+<div class="modal-overlay" id="fixedModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal modal-wide">
+        <div class="modal-header"><h3>📌 Σταθερά Μηνιαία Έξοδα</h3><button class="modal-close" onclick="document.getElementById('fixedModal').classList.remove('active')">✕</button></div>
+        <div class="modal-body">
+            <p class="modal-hint">Όρισε έξοδα που πρέπει οπωσδήποτε να πληρωθούν κάθε μήνα. Θα εμφανίζονται ως υπενθύμιση.</p>
+            <div id="fixedList">
+                {% for fe in fixed_expenses %}
+                <div class="fixed-manage-row" id="fm-{{ fe.id }}">
+                    <span class="fixed-manage-label">{{ fe.label }}</span>
+                    {% if fe.amount %}<span class="fixed-manage-amount">{{ "%.2f"|format(fe.amount) }}€</span>{% endif %}
+                    {% if fe.category %}<span class="fixed-manage-cat">{{ fe.category }}</span>{% endif %}
+                    <button class="icon-btn danger" onclick="deleteFixed({{ fe.id }})">✕</button>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="fixed-add-form">
+                <div class="form-group"><label>Περιγραφή (π.χ. Ενοίκιο)</label><input type="text" id="newFixedLabel" placeholder="Ενοίκιο, ΔΕΗ, Πανεπιστήμιο..."></div>
+                <div class="fixed-add-row">
+                    <div class="form-group" style="flex:1"><label>Ποσό (€, προαιρετικό)</label><input type="number" id="newFixedAmount" placeholder="0.00" step="0.01" min="0"></div>
+                    <div class="form-group" style="flex:1"><label>Κατηγορία</label>
+                        <select id="newFixedCat">
+                            <option value="">— Επιλογή —</option>
+                            {% for cat in expense_tree.keys() %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="addFixed()">＋ Προσθήκη</button>
+            </div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" onclick="document.getElementById('fixedModal').classList.remove('active');location.reload()">Τέλος</button></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const EXPENSE_TREE = {{ expense_tree | tojson }};
+const INCOME_CATS  = {{ income_categories | tojson }};
+const CAT_COLORS   = {{ cat_colors | tojson }};
+const MONTH_ID     = {{ month.id }};
+
+// ── Init ─────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
+    const ld = document.getElementById('lateDate');
+    if (ld) ld.value = new Date().toISOString().split('T')[0];
+    populateMainCats('expense');
+    updateLateCats();
+});
+
+// ── Tab switch ────────────────────────────────
+function switchTab(type, btn) {
+    document.getElementById('transType').value = type;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    populateMainCats(type);
+    document.getElementById('subCatGroup').style.display = type === 'expense' ? '' : 'none';
+}
+
+function populateMainCats(type) {
+    const sel = document.getElementById('mainCat');
+    sel.innerHTML = '';
+    if (type === 'income') {
+        INCOME_CATS.forEach(c => sel.add(new Option(c, c)));
+        document.getElementById('subCatGroup').style.display = 'none';
+    } else {
+        Object.keys(EXPENSE_TREE).forEach(c => sel.add(new Option(c, c)));
+        document.getElementById('subCatGroup').style.display = '';
+        updateSubCats();
+    }
+}
+
+function updateSubCats() {
+    const main = document.getElementById('mainCat').value;
+    const sel  = document.getElementById('subCat');
+    sel.innerHTML = '';
+    (EXPENSE_TREE[main] || []).forEach(s => sel.add(new Option(s, s)));
+}
+
+// ── Add transaction ───────────────────────────
+function addTransaction(monthId) {
+    const type = document.getElementById('transType').value;
+    const cat  = document.getElementById('mainCat').value;
+    const sub  = type === 'expense' ? document.getElementById('subCat').value : '';
+    const amount = parseFloat(document.getElementById('amountInput').value);
+    const dt   = document.getElementById('dateInput').value;
+    const desc = document.getElementById('descInput').value;
+    if (!amount || amount <= 0) { alert('Εισάγετε έγκυρο ποσό'); return; }
+    if (!dt) { alert('Επιλέξτε ημερομηνία'); return; }
+    fetch('/add_transaction', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({month_id:monthId, category:cat, subcategory:sub, type, amount, description:desc, date:dt})
+    }).then(r=>r.json()).then(d => { if (d.success) location.reload(); });
+}
+
+// ── Delete / Edit ─────────────────────────────
+function deleteTrans(id) {
+    if (!confirm('Διαγραφή κίνησης;')) return;
+    fetch(`/delete_transaction/${id}`,{method:'DELETE'}).then(()=>location.reload());
+}
+
+function editTrans(id, cat, sub, type, amount, desc, dt) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editType').value = type;
+    document.getElementById('editAmount').value = amount;
+    document.getElementById('editDate').value = dt;
+    document.getElementById('editDesc').value = desc;
+    updateEditCats(cat, sub);
+    document.getElementById('editModal').classList.add('active');
+}
+
+function updateEditCats(selectedCat, selectedSub) {
+    const type = document.getElementById('editType').value;
+    const mainSel = document.getElementById('editMainCat');
+    mainSel.innerHTML = '';
+    if (type === 'income') {
+        INCOME_CATS.forEach(c => mainSel.add(new Option(c,c)));
+        document.getElementById('editSubGroup').style.display = 'none';
+    } else {
+        Object.keys(EXPENSE_TREE).forEach(c => {
+            const o = new Option(c,c);
+            if (c === selectedCat) o.selected = true;
+            mainSel.add(o);
+        });
+        document.getElementById('editSubGroup').style.display = '';
+        updateEditSubCats(selectedSub);
+    }
+}
+
+function updateEditSubCats(selectedSub) {
+    const main = document.getElementById('editMainCat').value;
+    const sel  = document.getElementById('editSubCat');
+    sel.innerHTML = '';
+    (EXPENSE_TREE[main]||[]).forEach(s => {
+        const o = new Option(s,s);
+        if (s === selectedSub) o.selected = true;
+        sel.add(o);
+    });
+}
+
+function saveEdit() {
+    const id   = document.getElementById('editId').value;
+    const type = document.getElementById('editType').value;
+    fetch(`/edit_transaction/${id}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+            category: document.getElementById('editMainCat').value,
+            subcategory: type==='expense' ? document.getElementById('editSubCat').value : '',
+            type, amount: document.getElementById('editAmount').value,
+            date: document.getElementById('editDate').value,
+            description: document.getElementById('editDesc').value
+        })
+    }).then(()=>location.reload());
+}
+
+// ── Late entry ────────────────────────────────
+function updateLateCats() {
+    const type = document.getElementById('lateType')?.value || 'expense';
+    const sel  = document.getElementById('lateMainCat');
+    if (!sel) return;
+    sel.innerHTML = '';
+    if (type === 'income') { INCOME_CATS.forEach(c=>sel.add(new Option(c,c))); document.getElementById('lateSubCat').innerHTML=''; }
+    else { Object.keys(EXPENSE_TREE).forEach(c=>sel.add(new Option(c,c))); updateLateSubCats(); }
+}
+function updateLateSubCats() {
+    const main = document.getElementById('lateMainCat')?.value;
+    const sel  = document.getElementById('lateSubCat');
+    if (!sel) return;
+    sel.innerHTML = '';
+    (EXPENSE_TREE[main]||[]).forEach(s=>sel.add(new Option(s,s)));
+}
+function addLateEntry() {
+    const type = document.getElementById('lateType').value;
+    const mid  = document.getElementById('lateMonthSel').value;
+    const cat  = document.getElementById('lateMainCat').value;
+    const sub  = type==='expense' ? document.getElementById('lateSubCat').value : '';
+    const amount = parseFloat(document.getElementById('lateAmount').value);
+    const dt   = document.getElementById('lateDate').value;
+    const note = document.getElementById('lateNote').value || 'Καθυστερημένη καταχώρηση';
+    if (!amount||amount<=0) { alert('Εισάγετε ποσό'); return; }
+    fetch('/add_transaction',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({month_id:mid,category:cat,subcategory:sub,type,amount,date:dt,late_entry:1,late_entry_note:note})
+    }).then(r=>r.json()).then(d=>{if(d.success){alert('✓ Καταχωρήθηκε!');location.reload();}else alert(d.error||'Σφάλμα');});
+}
+
+// ── Budget ────────────────────────────────────
+function openBudgetModal() { document.getElementById('budgetModal').classList.add('active'); }
+function saveBudgets() {
+    Promise.all([...document.querySelectorAll('.budget-input')].map(inp =>
+        fetch('/set_budget',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({category:inp.dataset.cat,amount:parseFloat(inp.value)||0})})
+    )).then(()=>{document.getElementById('budgetModal').classList.remove('active');location.reload();});
+}
+
+// ── Fixed expenses ────────────────────────────
+function openFixedModal() { document.getElementById('fixedModal').classList.add('active'); }
+function addFixed() {
+    const label  = document.getElementById('newFixedLabel').value.trim();
+    const amount = parseFloat(document.getElementById('newFixedAmount').value)||0;
+    const cat    = document.getElementById('newFixedCat').value;
+    if (!label) { alert('Εισάγετε περιγραφή'); return; }
+    fetch('/fixed_expenses',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({label,amount,category:cat})
+    }).then(r=>r.json()).then(d=>{
+        if(d.success){
+            document.getElementById('newFixedLabel').value='';
+            document.getElementById('newFixedAmount').value='';
+            // Add row to list
+            const div=document.createElement('div');
+            div.className='fixed-manage-row';
+            div.id=`fm-${d.id}`;
+            div.innerHTML=`<span class="fixed-manage-label">${label}</span>${amount?`<span class="fixed-manage-amount">${amount.toFixed(2)}€</span>`:''}<button class="icon-btn danger" onclick="deleteFixed(${d.id})">✕</button>`;
+            document.getElementById('fixedList').appendChild(div);
+        }
+    });
+}
+function deleteFixed(id) {
+    fetch(`/fixed_expenses/${id}`,{method:'DELETE'}).then(()=>{
+        const el=document.getElementById(`fm-${id}`);
+        if(el) el.remove();
+        const ri=document.getElementById(`fi-${id}`);
+        if(ri) ri.remove();
+    });
+}
+function togglePaid(fid, mid, paid) {
+    fetch('/fixed_payment',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({fixed_expense_id:fid,month_id:mid,paid})
+    }).then(()=>location.reload());
+}
+
+// ── Month close ───────────────────────────────
+function confirmCloseMonth(id) {
+    if(!confirm('Κλείσιμο μήνα; Θα μπορείς να επεξεργαστείς για 5 ακόμα μέρες.')) return;
+    fetch(`/close_month/${id}`,{method:'POST'}).then(()=>location.reload());
+}
+
+// ── Chart ─────────────────────────────────────
+{% if expense_by_cat %}
+
+// Παλέτα 13 χρωμάτων — αντιστοίχιση βάσει σειράς κατηγορίας
+const PALETTE_13 = [
+    '#E74C3C','#27AE60','#F39C12','#E67E22','#9B59B6',
+    '#F06292','#E91E63','#1ABC9C','#3498DB','#8D6E63',
+    '#1A5276','#2ECC71','#95A5A6'
+];
+const CAT_ORDER = Object.keys(EXPENSE_TREE);
+
+// Fallback map για παλιά ονόματα κατηγοριών
+const LEGACY_COLOR_MAP = {
+    'Πανεπιστήμιο':'#1ABC9C','Πανεπιστήμιο (Βιβλία, Φωτοτυπίες)':'#1ABC9C',
+    'Ενοίκιο':'#E74C3C','Σπίτι & Λογαριασμοί':'#E74C3C',
+    'Σούπερ μάρκετ':'#27AE60','Σούπερ Μάρκετ':'#27AE60',
+    'Διάφορα':'#95A5A6','Διάφορα / Έκτακτα':'#95A5A6',
+    'Βενζίνη':'#E67E22','Μετακινήσεις & Όχημα':'#E67E22',
+    'Φαγητό έξω':'#F39C12','Φαγητό & Καφέδες Έξω':'#F39C12',
+    'Καφέδες & Φούρνος':'#F39C12',
+    'Παραγγελίες (Delivery / Takeaway)':'#F39C12',
+    'Διασκέδαση (Ποτό, Σινεμά)':'#9B59B6','Διασκέδαση & Ταξίδια':'#9B59B6',
+    'Αγορές (Ρούχα, Παπούτσια)':'#F06292','Αγορές & Προσωπική Φροντίδα':'#F06292',
+    'Φαρμακείο / Υγεία':'#E91E63','Υγεία & Φαρμακείο':'#E91E63',
+    'Εκπαίδευση / Μαθήματα':'#1ABC9C','Εκπαίδευση & Πανεπιστήμιο':'#1ABC9C',
+    'Συνδρομές (Netflix, Spotify, Gym)':'#3498DB','Συνδρομές & Gym':'#3498DB',
+    'Κατοικίδια (Τροφή, Κτηνίατρος)':'#8D6E63','Κατοικίδια':'#8D6E63',
+    'Τράπεζες (Revolut)':'#1A5276','Τραπεζικά & Revolut':'#1A5276',
+    'Αποταμίευση / Επενδύσεις':'#2ECC71','Αποταμίευση & Επενδύσεις':'#2ECC71',
+    'Λογαριασμοί (Κοινόχρηστα)':'#E74C3C','Internet / Τηλέφωνο':'#E74C3C',
+    'Ηλεκτρικό Ρεύμα':'#E74C3C','Ύδρευση':'#E74C3C',
+    'Ταξίδια / Διακοπές':'#9B59B6',
+    'Προσωπική Φροντίδα (Κουρείο/Κομμωτήριο)':'#F06292',
+    'Ασφάλεια (Αυτοκινήτου, Υγείας)':'#E67E22',
+    'Τέλη Κυκλοφορίας':'#E67E22','Service Αυτοκινήτου / Μηχανής':'#E67E22',
+    'Δώρα (Γιορτές, Γενέθλια)':'#9B59B6',
+    'Μετακινήσεις (Εισιτήρια, Διόδια)':'#E67E22',
+};
+
+function getCatColor(name) {
+    // 1. Αναζήτηση στη νέα παλέτα βάσει σειράς
+    const idx = CAT_ORDER.indexOf(name);
+    if (idx >= 0) return PALETTE_13[idx % 13];
+    // 2. Fallback σε παλιά ονόματα
+    if (LEGACY_COLOR_MAP[name]) return LEGACY_COLOR_MAP[name];
+    // 3. Hash-based color για ό,τι άλλο (ώστε να είναι πάντα χρωματιστό, όχι γκρι)
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return PALETTE_13[Math.abs(hash) % 13];
+}
+
+const expLabels = {{ expense_by_cat | map(attribute='category') | list | tojson }};
+const expData   = {{ expense_by_cat | map(attribute='total') | list | tojson }};
+const expColors = expLabels.map(l => getCatColor(l));
+
+// Normalized: blend 50% πραγματικό + 50% sqrt(%) → φαίνονται ΟΛΑ ανάλογα
+const totalExp = expData.reduce((a,b) => a+b, 0);
+const realPcts = expData.map(v => v / totalExp);
+const normData = realPcts.map(p => p * 0.45 + Math.sqrt(p) * 0.55);
+
+new Chart(document.getElementById('expenseChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+        labels: expLabels,
+        datasets: [{
+            data: normData,
+            backgroundColor: expColors,
+            borderWidth: 2,
+            borderColor: '#fff',
+            hoverOffset: 8,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '55%',
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: ctx => {
+                        // Tooltip δείχνει ΠΑΝΤΑ πραγματικά ποσά
+                        const realPct = (realPcts[ctx.dataIndex] * 100).toFixed(1);
+                        return ` ${ctx.label}: ${expData[ctx.dataIndex].toFixed(2)}€  (${realPct}%)`;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Legend ταξινομημένο από μεγαλύτερο
+const leg = document.getElementById('chartLegend');
+const sorted = expLabels.map((l,i) => ({l, v:expData[i], c:expColors[i], p:realPcts[i]})).sort((a,b) => b.v-a.v);
+sorted.forEach(({l,v,c,p}) => {
+    const d = document.createElement('div');
+    d.className = 'legend-item';
+    d.innerHTML = `<span class="legend-dot" style="background:${c}"></span><span class="legend-label">${l}</span><span class="legend-pct">${(p*100).toFixed(1)}%</span><span class="legend-val">${v.toFixed(2)}€</span>`;
+    leg.appendChild(d);
+});
+{% endif %}
+</script>
+{% endblock %}

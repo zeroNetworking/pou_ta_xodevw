@@ -519,6 +519,82 @@ def analytics():
         cat_colors=CAT_COLORS,all_months=all_months,greek_months=GREEK_MONTHS,
         now=datetime.now(),username=session.get('username'))
 
+@app.route('/calendar')
+@app.route('/calendar/<int:year>/<int:month_num>')
+@login_required
+def calendar_view(year=None, month_num=None):
+    uid = current_user_id()
+    today = date.today()
+    if year is None:
+        year = today.year
+    if month_num is None:
+        month_num = today.month
+
+    # Υπολογισμός prev/next μήνα
+    if month_num == 1:
+        prev_year, prev_month = year - 1, 12
+    else:
+        prev_year, prev_month = year, month_num - 1
+    if month_num == 12:
+        next_year, next_month = year + 1, 1
+    else:
+        next_year, next_month = year, month_num + 1
+
+    # Ημέρες του μήνα
+    first_weekday, days_in_month = calendar.monthrange(year, month_num)
+    # Ελληνικό: εβδομάδα ξεκινά Δευτέρα (0=Δευ ... 6=Κυρ)
+    # first_weekday είναι ήδη 0=Δευ με calendar module
+
+    # Φέρνουμε κινήσεις του μήνα για αυτόν τον χρήστη
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""SELECT t.* FROM transactions t
+                 JOIN months m ON t.month_id = m.id
+                 WHERE m.user_id=? AND m.year=? AND m.month=?
+                 ORDER BY t.transaction_date, t.id""",
+              (uid, year, month_num))
+    transactions = c.fetchall()
+
+    # Ομαδοποίηση ανά ημέρα
+    days_data = {}
+    for t in transactions:
+        try:
+            d = datetime.fromisoformat(t['transaction_date']).day
+        except Exception:
+            continue
+        if d not in days_data:
+            days_data[d] = {'income': 0.0, 'expense': 0.0, 'transactions': []}
+        days_data[d]['transactions'].append(dict(t))
+        if t['type'] == 'income':
+            days_data[d]['income'] += t['amount']
+        else:
+            days_data[d]['expense'] += t['amount']
+
+    # Βρίσκουμε αν υπάρχει month_id για αυτόν τον μήνα
+    c.execute("SELECT id FROM months WHERE user_id=? AND year=? AND month=?",
+              (uid, year, month_num))
+    month_row = c.fetchone()
+    month_id = month_row['id'] if month_row else None
+
+    c.execute("SELECT * FROM months WHERE user_id=? ORDER BY year DESC, month DESC", (uid,))
+    all_months = c.fetchall()
+    conn.close()
+
+    return render_template('calendar.html',
+        year=year, month_num=month_num,
+        month_name=GREEK_MONTHS[month_num],
+        first_weekday=first_weekday,
+        days_in_month=days_in_month,
+        days_data=days_data,
+        today=today,
+        prev_year=prev_year, prev_month=prev_month,
+        next_year=next_year, next_month=next_month,
+        month_id=month_id,
+        all_months=all_months,
+        greek_months=GREEK_MONTHS,
+        now=datetime.now(),
+        username=session.get('username'))
+
 @app.route('/search')
 @login_required
 def search():

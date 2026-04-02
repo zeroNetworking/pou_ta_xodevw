@@ -8,6 +8,7 @@
     </div>
 </div>
 
+<!-- Summary stat cards: all-time totals across every tracked month -->
 <div class="stats-grid">
     <div class="stat-card income-card">
         <div class="stat-card-label">Συνολικά Έσοδα</div>
@@ -17,6 +18,7 @@
         <div class="stat-card-label">Συνολικά Έξοδα</div>
         <div class="stat-card-value">-{{ "%.2f"|format(total_expense) }}€</div>
     </div>
+    <!-- Balance card changes color class depending on whether it's positive or negative -->
     <div class="stat-card balance-card {% if total_balance >= 0 %}positive{% else %}negative{% endif %}">
         <div class="stat-card-label">Συνολικό Υπόλοιπο</div>
         <div class="stat-card-value">{{ "%.2f"|format(total_balance) }}€</div>
@@ -27,6 +29,7 @@
     </div>
 </div>
 
+<!-- Smart suggestions block: simple spending insights generated server-side -->
 {% if suggestions %}
 <div class="suggestions-block">
     <div class="suggestions-title">💡 Προτάσεις</div>
@@ -34,7 +37,38 @@
 </div>
 {% endif %}
 
+<!-- ── Multi-Month Export ── -->
 {% if analytics_data %}
+<div class="card" style="margin-bottom:14px">
+    <div class="card-header">📥 Εξαγωγή Στατιστικών</div>
+    <div style="padding:14px 16px;">
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+            Επέλεξε μήνες και κατέβασε CSV με όλες τις κινήσεις.
+        </p>
+        <div class="export-select-row" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+            {% for d in analytics_data %}
+            <label class="export-month-check" style="display:inline-flex; align-items:center; gap:4px; font-size:12px; cursor:pointer; padding:4px 8px; border:1px solid var(--border); border-radius:6px; transition:all 0.15s;">
+                <input type="checkbox" class="export-cb" value="{{ d.id }}" style="margin:0;">
+                <span>{{ d.name }}</span>
+                {% if d.is_closed %}<span style="font-size:10px;">🔒</span>{% endif %}
+            </label>
+            {% endfor %}
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-ghost" onclick="selectExportYear(2024)">2024</button>
+            <button class="btn btn-ghost" onclick="selectExportYear(2025)">2025</button>
+            <button class="btn btn-ghost" onclick="selectExportYear(2026)">2026</button>
+            <button class="btn btn-ghost" onclick="selectAllExport()">Όλα</button>
+            <button class="btn btn-ghost" onclick="clearAllExport()">Κανένα</button>
+            <div style="flex:1"></div>
+            <button class="btn btn-primary" onclick="downloadExportCSV()">⬇ Κατέβασε CSV</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if analytics_data %}
+<!-- Two side-by-side charts: income vs expenses per month, and top expense categories -->
 <div class="analytics-charts-row">
     <div class="card">
         <div class="card-header">Έσοδα vs Έξοδα ανά Μήνα</div>
@@ -46,6 +80,7 @@
     </div>
 </div>
 
+<!-- Detailed table: one row per month with income, expenses, balance, and top category -->
 <div class="card" style="margin-top:14px">
     <div class="card-header">Ανά Μήνα</div>
     <table class="data-table">
@@ -58,6 +93,7 @@
                 <td><strong>{{ d.name }}</strong></td>
                 <td class="income mono">+{{ "%.2f"|format(d.total_income) }}€</td>
                 <td class="expense mono">-{{ "%.2f"|format(d.total_expense) }}€</td>
+                <!-- Balance cell colored green or red based on sign -->
                 <td class="{% if d.balance >= 0 %}positive{% else %}negative{% endif %} mono">{{ "%.2f"|format(d.balance) }}€</td>
                 <td>{{ d.top_expense_category or '—' }}</td>
                 <td><a href="{{ url_for('month_detail', month_id=d.id) }}" class="table-link">Άνοιγμα →</a></td>
@@ -67,6 +103,7 @@
     </table>
 </div>
 {% else %}
+<!-- Empty state: shown when the user has no months with transaction data yet -->
 <div class="empty-state">
     <div class="empty-icon">∿</div>
     <div class="empty-title">Δεν υπάρχουν δεδομένα</div>
@@ -77,18 +114,20 @@
 
 {% block scripts %}
 <script>
-// Ίδια παλέτα 13 χρωμάτων παντού
+// Shared 13-color palette matching CAT_COLORS in app.py (one color per category)
 const PALETTE_13 = [
     '#E74C3C','#27AE60','#F39C12','#E67E22','#9B59B6',
     '#F06292','#E91E63','#1ABC9C','#3498DB','#8D6E63',
     '#1A5276','#2ECC71','#95A5A6'
 ];
+// Canonical category order — index determines which palette color is used
 const CAT_ORDER = [
     'Σπίτι & Λογαριασμοί','Σούπερ Μάρκετ','Φαγητό & Καφέδες Έξω',
     'Μετακινήσεις & Όχημα','Διασκέδαση & Ταξίδια','Αγορές & Προσωπική Φροντίδα',
     'Υγεία & Φαρμακείο','Εκπαίδευση & Πανεπιστήμιο','Συνδρομές & Gym',
     'Κατοικίδια','Τραπεζικά & Revolut','Αποταμίευση & Επενδύσεις','Διάφορα / Έκτακτα'
 ];
+// Fallback color map for old category names that may exist in pre-migration data
 const LEGACY = {
     'Πανεπιστήμιο':'#1ABC9C','Πανεπιστήμιο (Βιβλία, Φωτοτυπίες)':'#1ABC9C',
     'Ενοίκιο':'#E74C3C','Σούπερ μάρκετ':'#27AE60','Διάφορα':'#95A5A6',
@@ -102,6 +141,10 @@ const LEGACY = {
     'Αποταμίευση / Επενδύσεις':'#2ECC71','Μετακινήσεις (Εισιτήρια, Διόδια)':'#E67E22',
     'Λογαριασμοί (Κοινόχρηστα)':'#E74C3C','Service Αυτοκινήτου / Μηχανής':'#E67E22',
 };
+// Resolves a category name to its chart color using a 3-step priority:
+// 1. Modern canonical order → palette index
+// 2. Legacy name map → hardcoded color
+// 3. Hash-based fallback → always a palette color, never grey
 function getCatColor(name) {
     const i = CAT_ORDER.indexOf(name);
     if (i >= 0) return PALETTE_13[i];
@@ -111,10 +154,12 @@ function getCatColor(name) {
     return PALETTE_13[Math.abs(h) % 13];
 }
 
+// Shared Chart.js font settings for consistent typography across both charts
 const font = { family:'DM Sans', size:12 };
 const monoFont = { family:'DM Mono', size:11 };
 
 {% if analytics_data %}
+// Bar chart: grouped income vs expenses for each month (x-axis = month name)
 new Chart(document.getElementById('monthChart'), {
     type: 'bar',
     data: {
@@ -136,6 +181,7 @@ new Chart(document.getElementById('monthChart'), {
 {% endif %}
 
 {% if top_categories %}
+// Horizontal bar chart: top 5 expense categories by total spending across all months
 const topCats   = {{ top_categories | map(attribute='category') | list | tojson }};
 const topTotals = {{ top_categories | map(attribute='total')    | list | tojson }};
 new Chart(document.getElementById('catChart'), {
@@ -154,5 +200,41 @@ new Chart(document.getElementById('catChart'), {
     }
 });
 {% endif %}
+
+// ── Multi-month export helpers ───────────────────────────────
+const allMonthData = {{ analytics_data | tojson }};
+
+function selectExportYear(year) {
+    document.querySelectorAll('.export-cb').forEach(cb => {
+        const m = allMonthData.find(d => d.id === parseInt(cb.value));
+        if (m) cb.checked = (m.year === year);
+    });
+    _updateExportLabels();
+}
+function selectAllExport() {
+    document.querySelectorAll('.export-cb').forEach(cb => cb.checked = true);
+    _updateExportLabels();
+}
+function clearAllExport() {
+    document.querySelectorAll('.export-cb').forEach(cb => cb.checked = false);
+    _updateExportLabels();
+}
+function _updateExportLabels() {
+    document.querySelectorAll('.export-month-check').forEach(label => {
+        const cb = label.querySelector('.export-cb');
+        label.style.background = cb.checked ? 'var(--accent, #9CAB84)' : '';
+        label.style.color = cb.checked ? 'white' : '';
+        label.style.borderColor = cb.checked ? 'var(--accent, #9CAB84)' : '';
+    });
+}
+document.querySelectorAll('.export-cb').forEach(cb => {
+    cb.addEventListener('change', _updateExportLabels);
+});
+
+function downloadExportCSV() {
+    const ids = [...document.querySelectorAll('.export-cb:checked')].map(cb => cb.value);
+    if (!ids.length) { alert('Επέλεξε τουλάχιστον 1 μήνα'); return; }
+    window.open(`/export/year/csv?month_ids=${ids.join(',')}`, '_blank');
+}
 </script>
 {% endblock %}

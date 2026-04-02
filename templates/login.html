@@ -3,29 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Σύνδεση — Finance Manager</title>
+    <title>Σύνδεση — Που τα ξοδεύω</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+<!-- auth-body applies the centered full-screen layout used on login/register pages -->
 <body class="auth-body">
 <div class="auth-wrap">
     <div class="auth-card">
+        <!-- Brand logo/name at the top of the login card -->
         <div class="auth-brand">
-            <span class="auth-icon">◈</span>
-            <span class="auth-title">Finance Manager</span>
+            <span class="auth-icon">💰</span>
+            <span class="auth-title">Που τα ξοδεύω</span>
         </div>
         <h2 class="auth-heading">Σύνδεση</h2>
+
+        <!-- Error message from Flask (wrong credentials, rate limit, etc.) -->
         {% if error %}
         <div class="auth-error">{{ error }}</div>
         {% endif %}
+
+        <!-- Standard HTML form POST; Flask handles validation and session creation -->
         <form method="POST" action="/login" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label>Username</label>
                 <input type="text" name="username" placeholder="Το username σου" required autofocus>
             </div>
             <div class="form-group">
                 <label>Κωδικός</label>
+                <!-- pw-wrap wraps the input and the show/hide toggle button together -->
                 <div class="pw-wrap">
                     <input type="password" name="password" id="loginPw" placeholder="••••••••" required>
                     <button type="button" class="pw-toggle" onclick="togglePw('loginPw', this)">👁</button>
@@ -37,17 +45,21 @@
             Δεν έχεις λογαριασμό; <a href="/register">Εγγραφή</a>
         </div>
     </div>
+
+    <!-- Live clock shown on the login page (purely decorative/ambient) -->
     <div class="auth-clock">
         <div id="authTime" class="auth-time-display">--:--:--</div>
         <div id="authDate" class="auth-date-display">--/--/----</div>
     </div>
 </div>
 <script>
+// Toggles a password field between masked and visible, updating the button icon accordingly
 function togglePw(id, btn) {
     const el = document.getElementById(id);
     el.type = el.type === 'password' ? 'text' : 'password';
     btn.textContent = el.type === 'password' ? '👁' : '🙈';
 }
+// Live clock tick function for the login page (runs independently of the sidebar clock)
 function tick() {
     const n = new Date(), pad = x => String(x).padStart(2,'0');
     const days = ['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο'];

@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Ημερολόγιο — {{ month_name }} {{ year }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Ημερολόγιο</h1>
+        <!-- Live date/time displayed in the header, updated every second by JS -->
+        <p class="page-sub" id="liveDateHeader">{{ now.strftime('%A %d/%m/%Y') }}</p>
+    </div>
+    <div class="header-actions">
+        <!-- Link to the full month detail page, only shown if a month record exists for this period -->
+        {% if month_id %}
+        <a href="{{ url_for('month_detail', month_id=month_id) }}" class="btn btn-ghost">↗ Προβολή Μήνα</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Month navigation: arrows to go to previous/next month, plus a "Today" shortcut -->
+<div class="cal-nav">
+    <a href="{{ url_for('calendar_view', year=prev_year, month_num=prev_month) }}" class="cal-nav-btn">‹</a>
+    <div class="cal-nav-title">
+        <span class="cal-month-name">{{ month_name }}</span>
+        <span class="cal-year">{{ year }}</span>
+    </div>
+    <a href="{{ url_for('calendar_view', year=next_year, month_num=next_month) }}" class="cal-nav-btn">›</a>
+    <!-- "Today" always navigates to the current calendar month (no year/month params) -->
+    <a href="{{ url_for('calendar_view') }}" class="btn btn-ghost cal-today-btn">Σήμερα</a>
+</div>
+
+<!-- Calendar grid: 7-column CSS grid (Mon–Sun) -->
+<div class="cal-wrap">
+    <div class="cal-grid">
+        <!-- Day-of-week header row -->
+        {% for day in ['Δευ','Τρι','Τετ','Πεμ','Παρ','Σαβ','Κυρ'] %}
+        <div class="cal-header-cell">{{ day }}</div>
+        {% endfor %}
+
+        <!-- Empty cells to offset the first day to the correct weekday column -->
+        {% for i in range(first_weekday) %}
+        <div class="cal-cell cal-empty"></div>
+        {% endfor %}
+
+        <!-- Day cells: one per day of the month -->
+        {% for day in range(1, days_in_month + 1) %}
+        {% set day_data = days_data.get(day, {}) %}
+        {% set is_today = (today.year == year and today.month == month_num and today.day == day) %}
+        {% set has_data = day_data.get('transactions', []) | length > 0 %}
+
+        <!-- cal-today highlights the current date; cal-has-data adds a subtle indicator -->
+        <div class="cal-cell {% if is_today %}cal-today{% endif %} {% if has_data %}cal-has-data{% endif %}"
+             onclick="openDayModal({{ day }})">
+            <div class="cal-day-num {% if is_today %}cal-today-num{% endif %}">{{ day }}</div>
+
+            {% if has_data %}
+            <!-- Mini summary: shows rounded expense and income totals for the day -->
+            <div class="cal-day-summary">
+                {% if day_data.expense > 0 %}
+                <span class="cal-exp">-{{ "%.0f"|format(day_data.expense) }}€</span>
+                {% endif %}
+                {% if day_data.income > 0 %}
+                <span class="cal-inc">+{{ "%.0f"|format(day_data.income) }}€</span>
+                {% endif %}
+            </div>
+            <!-- Colored dots: one per transaction (max 4 shown, then a "+N" counter) -->
+            {% set trans_count = day_data.get('transactions', []) | length %}
+            {% if trans_count > 0 %}
+            <div class="cal-dots">
+                {% for t in day_data.get('transactions', [])[:4] %}
+                <span class="cal-dot {% if t.type == 'income' %}income{% else %}expense{% endif %}"></span>
+                {% endfor %}
+                {% if trans_count > 4 %}<span class="cal-dot-more">+{{ trans_count - 4 }}</span>{% endif %}
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Month summary bar: totals for the displayed month computed in Jinja using namespace trick
+     (needed because Jinja2 does not allow reassigning variables inside loops directly) -->
+{% set total_exp = namespace(v=0) %}
+{% set total_inc = namespace(v=0) %}
+{% for d, dd in days_data.items() %}
+{% set total_exp.v = total_exp.v + dd.expense %}
+{% set total_inc.v = total_inc.v + dd.income %}
+{% endfor %}
+
+<!-- Only show the summary bar if there is at least one day with transactions -->
+{% if days_data %}
+<div class="cal-summary-bar">
+    <div class="cal-sum-item">
+        <span class="cal-sum-label">Σύνολο Εσόδων</span>
+        <span class="cal-sum-val income">+{{ "%.2f"|format(total_inc.v) }}€</span>
+    </div>
+    <div class="cal-sum-item">
+        <span class="cal-sum-label">Σύνολο Εξόδων</span>
+        <span class="cal-sum-val expense">-{{ "%.2f"|format(total_exp.v) }}€</span>
+    </div>
+    <div class="cal-sum-item">
+        <span class="cal-sum-label">Υπόλοιπο</span>
+        <span class="cal-sum-val {% if total_inc.v - total_exp.v >= 0 %}positive{% else %}negative{% endif %}">
+            {{ "%.2f"|format(total_inc.v - total_exp.v) }}€
+        </span>
+    </div>
+</div>
+{% endif %}
+
+<!-- Day detail modal: opens when the user clicks on a calendar cell -->
+<div class="modal-overlay" id="dayModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal modal-wide">
+        <div class="modal-header">
+            <!-- Title is set dynamically by openDayModal() in JS -->
+            <h3 id="dayModalTitle">—</h3>
+            <button class="modal-close" onclick="document.getElementById('dayModal').classList.remove('active')">✕</button>
+        </div>
+        <!-- Body is populated dynamically with transaction rows for the selected day -->
+        <div class="modal-body" id="dayModalBody" style="gap:6px"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Transaction data for the entire month, passed from Flask as JSON for client-side rendering
+const DAYS_DATA = {{ days_data | tojson }};
+const YEAR  = {{ year }};
+const MONTH = {{ month_num }};
+// Greek day and month name arrays used to format the modal title
+const GREEK_DAYS = ['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο'];
+const GREEK_MONTHS_CAL = ['','Ιανουαρίου','Φεβρουαρίου','Μαρτίου','Απριλίου','Μαΐου','Ιουνίου','Ιουλίου','Αυγούστου','Σεπτεμβρίου','Οκτωβρίου','Νοεμβρίου','Δεκεμβρίου'];
+
+// Opens the day detail modal and populates it with transactions for the selected day
+function openDayModal(day) {
+    const d = DAYS_DATA[day];
+    // Build a Date object to get the correct Greek day name
+    const dt = new Date(YEAR, MONTH - 1, day);
+    const dayName = GREEK_DAYS[dt.getDay()];
+    const title = `${dayName} ${day} ${GREEK_MONTHS_CAL[MONTH]} ${YEAR}`;
+    document.getElementById('dayModalTitle').textContent = title;
+    const body = document.getElementById('dayModalBody');
+    body.innerHTML = '';
+
+    if (!d || !d.transactions || d.transactions.length === 0) {
+        // Empty state message for days with no transactions
+        body.innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Δεν υπάρχουν κινήσεις αυτή τη μέρα.</p>';
+    } else {
+        // Daily summary row (income and expense totals for this day)
+        const sumDiv = document.createElement('div');
+        sumDiv.className = 'day-modal-sum';
+        sumDiv.innerHTML = `
+            ${d.income > 0 ? `<span class="dm-income">+${d.income.toFixed(2)}€ έσοδα</span>` : ''}
+            ${d.expense > 0 ? `<span class="dm-expense">-${d.expense.toFixed(2)}€ έξοδα</span>` : ''}
+        `;
+        body.appendChild(sumDiv);
+
+        // Individual transaction rows
+        d.transactions.forEach(t => {
+            const el = document.createElement('div');
+            el.className = 'day-modal-trans';
+            const sign = t.type === 'income' ? '+' : '-';
+            const cls  = t.type === 'income' ? 'income' : 'expense';
+            el.innerHTML = `
+                <div class="dmt-left">
+                    <span class="trans-dot ${cls}" style="font-size:8px">●</span>
+                    <div>
+                        <!-- Category + optional subcategory tag -->
+                        <div class="dmt-cat">${t.category}${t.subcategory ? ' <span class="sub-tag">' + t.subcategory + '</span>' : ''}</div>
+                        ${t.description ? `<div class="dmt-desc">${t.description}</div>` : ''}
+                    </div>
+                </div>
+                <span class="dmt-amount ${cls}">${sign}${parseFloat(t.amount).toFixed(2)}€</span>
+            `;
+            body.appendChild(el);
+        });
+    }
+    document.getElementById('dayModal').classList.add('active');
+}
+
+// Updates the live date/time in the page header every second
+function updateHeader() {
+    const now = new Date();
+    const days = ['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο'];
+    const pad = n => String(n).padStart(2,'0');
+    const el = document.getElementById('liveDateHeader');
+    if (el) el.textContent = `${days[now.getDay()]} ${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}  ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+updateHeader();
+setInterval(updateHeader, 1000);
+</script>
+{% endblock %}

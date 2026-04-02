@@ -7,13 +7,19 @@
         <p class="page-sub">Αναζήτηση σε όλες τις κινήσεις</p>
     </div>
 </div>
+
+<!-- Search bar: pre-filled with the current query from the URL parameter ?q= -->
 <div class="search-bar-wrap">
     <input type="text" id="searchInput" class="search-bar" placeholder="Αναζήτηση κατηγορίας ή περιγραφής..." value="{{ query }}">
     <button class="btn btn-primary" onclick="doSearch()">Αναζήτηση</button>
 </div>
+
+<!-- Results section: only rendered if a query was submitted -->
 {% if query %}
     <div class="results-count">{{ results|length }} αποτελέσματα για "{{ query }}"</div>
+
     {% if results %}
+    <!-- Results table: shows all transactions matching the query across all months -->
     <div class="card">
         <table class="data-table">
             <thead><tr><th>Ημερομηνία</th><th>Μήνας</th><th>Κατηγορία</th><th>Τύπος</th><th>Ποσό</th><th>Περιγραφή</th></tr></thead>
@@ -23,10 +29,12 @@
                     <td class="mono">{{ t.transaction_date }}</td>
                     <td>{{ t.month_name }}</td>
                     <td>{{ t.category }}</td>
+                    <!-- Badge colored by transaction type (income = green, expense = red) -->
                     <td><span class="type-badge {{ t.type }}">{% if t.type == 'income' %}Έσοδο{% else %}Έξοδο{% endif %}</span></td>
                     <td class="{% if t.type == 'income' %}income{% else %}expense{% endif %} mono">
                         {% if t.type == 'income' %}+{% else %}-{% endif %}{{ "%.2f"|format(t.amount) }}€
                     </td>
+                    <!-- Show em dash if there is no description -->
                     <td class="muted">{{ t.description or '—' }}</td>
                 </tr>
                 {% endfor %}
@@ -34,16 +42,20 @@
         </table>
     </div>
     {% else %}
+    <!-- Empty state when the query returned no results -->
     <div class="empty-state"><div class="empty-icon">⌕</div><div class="empty-title">Δεν βρέθηκαν αποτελέσματα</div></div>
     {% endif %}
 {% endif %}
 {% endblock %}
+
 {% block scripts %}
 <script>
+// Navigates to the search page with the input value as the q= query parameter
 function doSearch() {
     const q = document.getElementById('searchInput').value;
     window.location.href = `/search?q=${encodeURIComponent(q)}`;
 }
+// Allow pressing Enter in the search field to trigger the search
 document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 </script>
 {% endblock %}

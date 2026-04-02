@@ -2,60 +2,87 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Οικονομικά{% endblock %} — Finance Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#ffffff">
+    <title>{% block title %}Οικονομικά{% endblock %} — Που τα ξοδεύω</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Dark mode + density: apply before paint to prevent flash -->
+    <script>
+        if (localStorage.getItem('financeDarkMode') === '1')
+            document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.setAttribute('data-density',
+            localStorage.getItem('financeDensity') || 'comfortable');
+    </script>
 </head>
 <body>
 <div class="app-shell">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
-            <span class="brand-icon">◈</span>
-            <span class="brand-name">Finance</span>
+            <span class="brand-icon">💰</span>
+            <span class="brand-name">Που τα ξοδεύω</span>
+            <button class="sidebar-close-btn" onclick="closeMobileDrawer()" aria-label="Κλείσιμο">✕</button>
         </div>
 
-        <!-- Live clock -->
         <div class="sidebar-clock">
             <div class="clock-time" id="clockTime">--:--:--</div>
             <div class="clock-date" id="clockDate">-- / -- / ----</div>
         </div>
 
-        <!-- User info -->
+        <!-- User info row: username + privacy toggle + profile link + logout -->
         <div class="sidebar-user">
-            <span class="user-icon">◉</span>
+            <span class="user-icon">👤</span>
             <span class="user-name">{{ username }}</span>
             <button class="privacy-btn" id="privacyToggle" onclick="togglePrivacy()" title="Απόκρυψη ποσών">👁</button>
-            <a href="/logout" class="logout-btn" title="Αποσύνδεση">⏻</a>
+            <!-- Profile settings link — NEW -->
+            <a href="{{ url_for('profile') }}"
+               class="profile-nav-btn {% if request.endpoint == 'profile' %}active{% endif %}"
+               title="Ρυθμίσεις προφίλ">⚙</a>
+            <a href="/logout" class="logout-btn" title="Αποσύνδεση">🚪</a>
         </div>
 
         <nav class="sidebar-nav">
             <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
-                <span class="nav-icon">⊞</span><span>Dashboard</span>
+                <span class="nav-icon">🏠</span><span>Dashboard</span>
             </a>
-            <div class="nav-section-label">Μήνες</div>
-            <button class="nav-item new-month-btn" onclick="openNewMonthModal()">
-                <span class="nav-icon">＋</span><span>Νέος Μήνας</span>
+
+            <!-- Collapsible months section -->
+            <button class="nav-section-toggle" onclick="toggleMonthsList()" id="monthsToggleBtn">
+                <span>📅 Μήνες</span>
+                <span class="toggle-arrow" id="monthsArrow">▸</span>
             </button>
-            {% if all_months is defined %}
-                {% for m in all_months %}
-                <a href="{{ url_for('month_detail', month_id=m.id) }}"
-                   class="nav-item nav-month {% if request.endpoint == 'month_detail' and month is defined and month.id == m.id %}active{% endif %}">
-                    <span class="nav-dot {% if m.is_closed %}closed{% endif %}">●</span>
-                    <span>{{ m.name }}</span>
-                    {% if m.is_closed %}<span class="closed-badge">✓</span>{% endif %}
-                </a>
-                {% endfor %}
-            {% endif %}
+            <div class="nav-months-list collapsed" id="monthsList">
+                <button class="nav-item new-month-btn" onclick="openNewMonthModal()">
+                    <span class="nav-icon">➕</span><span>Νέος Μήνας</span>
+                </button>
+                {% if all_months is defined %}
+                    {% for m in all_months %}
+                    <a href="{{ url_for('month_detail', month_id=m.id) }}"
+                       class="nav-item nav-month {% if request.endpoint == 'month_detail' and month is defined and month.id == m.id %}active{% endif %}">
+                        <span class="nav-dot {% if m.is_closed %}closed{% endif %}">{% if m.is_closed %}🔒{% else %}📂{% endif %}</span>
+                        <span>{{ m.name }}</span>
+                    </a>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
             <div class="nav-section-label">Ανάλυση</div>
+            <a href="{{ url_for('calendar_view') }}" class="nav-item {% if request.endpoint == 'calendar_view' %}active{% endif %}">
+                <span class="nav-icon">📅</span><span>Ημερολόγιο</span>
+            </a>
             <a href="{{ url_for('analytics') }}" class="nav-item {% if request.endpoint == 'analytics' %}active{% endif %}">
-                <span class="nav-icon">∿</span><span>Analytics</span>
+                <span class="nav-icon">📊</span><span>Analytics</span>
             </a>
             <a href="{{ url_for('search') }}" class="nav-item {% if request.endpoint == 'search' %}active{% endif %}">
-                <span class="nav-icon">⌕</span><span>Αναζήτηση</span>
+                <span class="nav-icon">🔍</span><span>Αναζήτηση</span>
             </a>
+            <button class="nav-item" onclick="openCalcModal()">
+                <span class="nav-icon">🧮</span><span>Αριθμομηχανή</span>
+            </button>
         </nav>
     </aside>
 
@@ -63,6 +90,35 @@
         {% block content %}{% endblock %}
     </main>
 </div>
+
+<div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileDrawer()"></div>
+
+<nav class="bottom-nav" id="bottomNav">
+    <a href="{{ url_for('index') }}"
+       class="bottom-nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+        <span class="bottom-nav-icon">🏠</span>
+        <span class="bottom-nav-label">Home</span>
+    </a>
+    <button class="bottom-nav-item" onclick="toggleMobileDrawer()">
+        <span class="bottom-nav-icon">📋</span>
+        <span class="bottom-nav-label">Μήνες</span>
+    </button>
+    <a href="{{ url_for('calendar_view') }}"
+       class="bottom-nav-item {% if request.endpoint == 'calendar_view' %}active{% endif %}">
+        <span class="bottom-nav-icon">📅</span>
+        <span class="bottom-nav-label">Ημερολόγιο</span>
+    </a>
+    <a href="{{ url_for('analytics') }}"
+       class="bottom-nav-item {% if request.endpoint == 'analytics' %}active{% endif %}">
+        <span class="bottom-nav-icon">📊</span>
+        <span class="bottom-nav-label">Analytics</span>
+    </a>
+    <a href="{{ url_for('search') }}"
+       class="bottom-nav-item {% if request.endpoint == 'search' %}active{% endif %}">
+        <span class="bottom-nav-icon">🔍</span>
+        <span class="bottom-nav-label">Αναζήτηση</span>
+    </a>
+</nav>
 
 <!-- New Month Modal -->
 <div class="modal-overlay" id="newMonthModal" onclick="closeModalOnOverlay(event)">
@@ -110,6 +166,47 @@
             <button class="btn btn-primary" onclick="confirmSuggestMonth({{ next_month if suggest_new_month is defined else 0 }}, {{ next_year if suggest_new_month is defined else 0 }})">
                 ✓ Δημιουργία {{ greek_months[next_month] if suggest_new_month is defined and suggest_new_month else '' }}
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- Calculator Modal -->
+<div class="modal-overlay" id="calcModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal calc-modal">
+        <div class="modal-header">
+            <h3>🧮 Αριθμομηχανή</h3>
+            <button class="modal-close" onclick="closeCalcModal()">✕</button>
+        </div>
+        <div class="calc-body">
+            <div class="calc-display">
+                <div class="calc-expr" id="calcExpr">&nbsp;</div>
+                <div class="calc-result" id="calcResult">0</div>
+            </div>
+            <div class="calc-grid">
+                <button class="calc-btn calc-fn" onclick="calcClear()">C</button>
+                <button class="calc-btn calc-fn" onclick="calcBackspace()">⌫</button>
+                <button class="calc-btn calc-fn" onclick="calcPercent()">%</button>
+                <button class="calc-btn calc-op" onclick="calcOp('/')">÷</button>
+
+                <button class="calc-btn" onclick="calcDigit('7')">7</button>
+                <button class="calc-btn" onclick="calcDigit('8')">8</button>
+                <button class="calc-btn" onclick="calcDigit('9')">9</button>
+                <button class="calc-btn calc-op" onclick="calcOp('*')">×</button>
+
+                <button class="calc-btn" onclick="calcDigit('4')">4</button>
+                <button class="calc-btn" onclick="calcDigit('5')">5</button>
+                <button class="calc-btn" onclick="calcDigit('6')">6</button>
+                <button class="calc-btn calc-op" onclick="calcOp('-')">−</button>
+
+                <button class="calc-btn" onclick="calcDigit('1')">1</button>
+                <button class="calc-btn" onclick="calcDigit('2')">2</button>
+                <button class="calc-btn" onclick="calcDigit('3')">3</button>
+                <button class="calc-btn calc-op" onclick="calcOp('+')">+</button>
+
+                <button class="calc-btn calc-zero" onclick="calcDigit('0')">0</button>
+                <button class="calc-btn" onclick="calcDot()">.</button>
+                <button class="calc-btn calc-eq" onclick="calcEquals()">=</button>
+            </div>
         </div>
     </div>
 </div>

@@ -1,31 +1,41 @@
+/* Global box-sizing reset: ensures padding and borders are included in element dimensions */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── CSS Custom Properties (Design Tokens) ──────────────────────────────────
+   Centralised values used across the entire stylesheet.
+   Change these to retheme the whole app in one place. */
 :root {
-    --bg: #f7f7f7;
-    --surface: #ffffff;
-    --border: #e8e8e8;
-    --border-subtle: #f0f0f0;
-    --text-primary: #141414;
-    --text-secondary: #666;
-    --text-muted: #999;
-    --income: #1a6b3c;
-    --income-bg: #f0faf4;
-    --expense: #8b1a1a;
-    --expense-bg: #fdf2f2;
-    --positive: #1a6b3c;
-    --negative: #c0392b;
+    /* ── New earthy palette ── */
+    --bg: #F6F0D7;                /* Warm cream background */
+    --surface: #ffffff;           /* Card background */
+    --border: #C5D89D;            /* Soft green border */
+    --border-subtle: #dde8c4;     /* Lighter green for dividers */
+    --text-primary: #2d3a2a;      /* Dark forest text */
+    --text-secondary: #5a6b52;    /* Muted green-grey */
+    --text-muted: #89986D;        /* Sage muted text */
+    --income: #3a7d44;            /* Income green */
+    --income-bg: #e8f5e4;         /* Income badge bg */
+    --expense: #8b3a3a;           /* Expense red-brown */
+    --expense-bg: #faeaea;        /* Expense badge bg */
+    --positive: #3a7d44;          /* Positive balance */
+    --negative: #b33a3a;          /* Negative balance */
+    --accent: #9CAB84;            /* Accent / active elements */
+    --accent-hover: #89986D;      /* Accent hover */
     --sidebar-w: 210px;
     --radius: 8px;
-    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow: 0 1px 3px rgba(45,58,42,0.08), 0 1px 2px rgba(45,58,42,0.05);
+    --shadow-md: 0 4px 12px rgba(45,58,42,0.10), 0 2px 4px rgba(45,58,42,0.06);
 }
 
 html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
 
-/* ── App Shell — full viewport, no max-width anywhere ── */
+/* ── App Shell ─────────────────────────────────────────────────────────────
+   Full-viewport flex container: sidebar on the left, main content fills the rest.
+   overflow:hidden prevents double scrollbars — only main-content scrolls. */
 .app-shell { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
 
-/* ── Sidebar ── */
+/* ── Sidebar ────────────────────────────────────────────────────────────────
+   Fixed-width column on the left; scrollable if content overflows vertically. */
 .sidebar {
     width: var(--sidebar-w); min-width: var(--sidebar-w); height: 100vh;
     background: var(--surface); border-right: 1px solid var(--border);
@@ -46,15 +56,18 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .nav-section-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; padding: 14px 10px 5px; }
 .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; text-decoration: none; color: var(--text-secondary); font-size: 13px; cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: all 0.12s; }
 .nav-item:hover { background: var(--bg); color: var(--text-primary); }
-.nav-item.active { background: var(--text-primary); color: white; }
+.nav-item.active { background: var(--accent, #9CAB84); color: white; }
 .nav-icon { font-size: 13px; width: 16px; text-align: center; }
+/* Dot indicator next to each month: grey = open, green = closed */
 .nav-dot { font-size: 8px; width: 16px; text-align: center; color: #ccc; }
 .nav-dot.closed { color: #4caf50; }
 .nav-month { font-size: 12.5px; }
 .new-month-btn { color: var(--text-primary); font-weight: 500; }
 .closed-badge { margin-left: auto; font-size: 10px; color: #4caf50; }
 
-/* ── Main content — fills ALL remaining space ── */
+/* ── Main Content Area ──────────────────────────────────────────────────────
+   Fills all remaining horizontal space after the sidebar.
+   width:0 + flex:1 forces the flex algorithm to shrink properly. */
 .main-content {
     flex: 1;
     min-width: 0;
@@ -65,45 +78,54 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 }
 .main-content > * { width: 100%; }
 
-/* ── Page Header ── */
+/* ── Page Header ─────────────────────────────────────────────────────────── */
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; gap: 16px; flex-wrap: wrap; }
 .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
 .page-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 .header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
-/* ── Stats Cards ── */
+/* ── Summary Stat Cards ─────────────────────────────────────────────────────
+   4-column grid on desktop (collapses to 2 then 1 on smaller screens). */
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
 .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
 .stat-card-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 8px; font-weight: 600; }
 .stat-card-value { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; letter-spacing: -0.5px; }
 .stat-card-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+/* Card-type color variants */
 .income-card .stat-card-value { color: var(--income); }
 .expense-card .stat-card-value { color: var(--expense); }
 .balance-card.positive .stat-card-value { color: var(--positive); }
 .balance-card.negative .stat-card-value { color: var(--negative); }
+/* Top category shows a text value, so override the monospace/large style */
 .top-cat { font-family: 'DM Sans', sans-serif !important; font-size: 15px !important; }
 
-/* ── Alerts ── */
+/* ── Budget Alert Bar ────────────────────────────────────────────────────── */
 .alerts-bar { margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px; }
 .alert-item { border-radius: 6px; padding: 10px 14px; font-size: 13px; border: 1px solid; }
 .alert-danger  { background: #fff0f0; border-color: #f5c6cb; color: #721c24; }
 .alert-warning { background: #fff8e1; border-color: #ffe082; color: #795548; }
 .alert-info    { background: #e8f4fd; border-color: #bee5eb; color: #0c5460; }
 
-/* ── Fixed expenses reminder ── */
+/* ── Fixed Expenses Reminder Bar ────────────────────────────────────────────
+   Shown at the top of the month page as a checklist of recurring expenses. */
 .fixed-reminder-bar { background: #fffdf0; border: 1px solid #f0e68c; border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; }
 .fixed-reminder-title { font-size: 10px; font-weight: 600; color: #8a7000; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 8px; }
 .fixed-reminder-list { display: flex; flex-wrap: wrap; gap: 7px; }
+/* Pill-shaped item; becomes green when marked as paid */
 .fixed-item { display: flex; align-items: center; gap: 6px; background: white; border: 1px solid #e8d800; border-radius: 99px; padding: 4px 10px 4px 5px; font-size: 12.5px; transition: all 0.15s; }
-.fixed-item.paid { background: #f0faf4; border-color: #a8d5b5; opacity: 0.75; }
+.fixed-item.paid { background: #edf3e4; border-color: #C5D89D; opacity: 0.75; }
 .fixed-item.paid .fixed-label { text-decoration: line-through; color: var(--text-muted); }
+/* Circular checkbox button: white when unpaid, green when paid */
 .fixed-check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #ccc; background: white; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
-.fixed-item.paid .fixed-check { background: #27ae60; border-color: #27ae60; color: white; }
+.fixed-item.paid .fixed-check { background: var(--accent, #9CAB84); border-color: var(--accent, #9CAB84); color: white; }
 .fixed-label { font-size: 12.5px; font-weight: 500; }
 .fixed-amount { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); }
 .fixed-cat-tag { font-size: 10px; color: var(--text-muted); background: var(--border-subtle); padding: 1px 5px; border-radius: 99px; }
 
-/* ── 3-COLUMN LAYOUT: φόρμα | κινήσεις | chart ── */
+/* ── Month Detail — 3-Column Layout ─────────────────────────────────────────
+   Column 1: Add Transaction form (fixed width)
+   Column 2: Transaction list (flexible, takes remaining space)
+   Column 3: Expense pie chart (fixed width) */
 .month-body-3col {
     display: grid;
     grid-template-columns: 260px 1fr 280px;
@@ -113,30 +135,35 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 }
 .col-form, .col-trans, .col-chart { min-width: 0; }
 
-/* ── Card ── */
+/* ── Card ────────────────────────────────────────────────────────────────── */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
 .card-header { padding: 12px 16px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; }
 .trans-count { font-weight: 400; }
 
-/* ── Form ── */
+/* ── Form Controls ──────────────────────────────────────────────────────────
+   Income/Expense tab bar at the top of the add-transaction form. */
 .form-tabs { display: flex; margin: 12px 16px 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
 .tab-btn { flex: 1; padding: 7px; border: none; background: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-muted); cursor: pointer; transition: all 0.12s; }
 .tab-btn.active { background: var(--text-primary); color: white; }
 .form-group { padding: 10px 16px 0; }
 .form-group label { display: block; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
+/* Shared input/select styles applied both via class and descendant selector */
 .form-group input, .form-group select, .cat-select-styled {
     width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 5px;
     font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--surface);
     color: var(--text-primary); outline: none; transition: border-color 0.12s;
 }
 .form-group input:focus, .form-group select:focus, .cat-select-styled:focus { border-color: #aaa; }
+/* Submit button spanning the full card width with margin */
 .full-width { width: calc(100% - 32px); margin: 12px 16px 16px; }
 
-/* ── Transactions ── */
+/* ── Transaction List ────────────────────────────────────────────────────── */
+/* Max height creates a scroll window; min-height prevents collapse when empty */
 .trans-list { max-height: calc(100vh - 340px); min-height: 200px; overflow-y: auto; }
 .trans-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); transition: background 0.1s; }
 .trans-item:hover { background: var(--bg); }
 .trans-item:last-child { border-bottom: none; }
+/* Late entries (added to closed months) get a warm yellow tint */
 .trans-item.late-entry { background: #fffbf0; }
 .trans-left { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .trans-dot { font-size: 8px; flex-shrink: 0; }
@@ -148,72 +175,86 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .trans-amount { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; }
 .trans-amount.income { color: var(--income); }
 .trans-amount.expense { color: var(--expense); }
+/* Edit/delete actions are hidden until hover for a cleaner look */
 .trans-actions { display: flex; gap: 3px; opacity: 0; transition: opacity 0.12s; }
 .trans-item:hover .trans-actions { opacity: 1; }
 .icon-btn { width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); cursor: pointer; font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
 .icon-btn:hover { border-color: #aaa; color: var(--text-primary); }
 .icon-btn.danger:hover { border-color: #e57373; color: var(--expense); }
+/* Subcategory pill shown inline within the transaction category line */
 .sub-tag { font-size: 10px; background: var(--border-subtle); color: var(--text-muted); padding: 1px 5px; border-radius: 99px; margin-left: 4px; vertical-align: middle; }
+/* Late entry badge and note shown below the transaction date */
 .late-badge { font-size: 10px; color: #d68910; background: #fef9e7; border: 1px solid #f9e79f; border-radius: 99px; padding: 1px 6px; margin-left: 5px; vertical-align: middle; }
 .late-note { font-size: 11px; color: #d68910; margin-top: 2px; font-style: italic; }
 .empty-trans { padding: 32px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
-/* ── Chart column ── */
+/* ── Chart Column ─────────────────────────────────────────────────────────── */
 .chart-col-body { display: flex; flex-direction: column; align-items: center; padding: 14px 12px 12px; gap: 10px; }
+/* Constrain canvas width so the doughnut doesn't fill the whole column */
 .chart-col-body canvas { width: 100% !important; max-width: 220px; }
 .chart-legend-col { width: 100%; display: flex; flex-direction: column; gap: 3px; padding: 0 4px; }
 .chart-empty { padding: 40px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
-/* ── Legend ── */
+/* ── Custom Chart Legend ─────────────────────────────────────────────────── */
 .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11.5px; padding: 2px 0; }
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .legend-label { flex: 1; color: var(--text-secondary); font-size: 11px; }
+/* Fixed-width columns for percentage and euro amount so they align vertically */
 .legend-pct { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-muted); width: 30px; text-align: right; }
 .legend-val { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-primary); font-weight: 500; width: 54px; text-align: right; }
 
-/* ── Late entry / info cards ── */
+/* ── Late Entry Cards ─────────────────────────────────────────────────────
+   The orange left border visually distinguishes late-entry UI from normal forms. */
 .late-entry-card { margin-top: 14px; border-left: 3px solid #F39C12; }
 .late-entry-body { padding: 12px 16px 16px; }
 .late-hint { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+/* Red left border on the "closed month" info card shown instead of the form */
 .late-info-card { border-left: 3px solid #e74c3c; }
 .late-info-body { padding: 12px 16px; font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 7px; }
+/* 2-column grid for the late entry form fields */
 .late-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
 
-/* ── Fixed expenses modal ── */
+/* ── Fixed Expenses Management Modal ────────────────────────────────────── */
 .fixed-manage-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border-subtle); font-size: 13px; }
 .fixed-manage-row:last-child { border-bottom: none; }
 .fixed-manage-label { flex: 1; font-weight: 500; }
 .fixed-manage-amount { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); }
 .fixed-manage-cat { font-size: 11px; color: var(--text-muted); background: var(--border-subtle); padding: 1px 6px; border-radius: 99px; }
+/* "Add new fixed expense" form area separated from the existing list */
 .fixed-add-form { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
 .fixed-add-row { display: flex; gap: 10px; }
 
-/* ── Budget modal ── */
+/* ── Budget Settings Modal ──────────────────────────────────────────────── */
 .budget-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border-subtle); }
 .budget-row:last-child { border-bottom: none; }
 .budget-cat-wrap { display: flex; align-items: center; gap: 7px; flex: 1; }
+/* Small colored dot matches the category's chart color */
 .budget-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .budget-cat { font-size: 13px; }
 .budget-input-wrap { display: flex; align-items: center; gap: 4px; }
+/* Narrow monospace input for entering euro amounts */
 .budget-input { width: 80px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 5px; font-family: 'DM Mono', monospace; font-size: 12px; text-align: right; }
 .budget-euro { font-size: 12px; color: var(--text-muted); }
 
-/* ── Analytics ── */
+/* ── Analytics Page ──────────────────────────────────────────────────────── */
+/* Two charts side by side; collapses to single column on small screens */
 .analytics-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; width: 100%; }
 .analytics-chart-card { }
 .analytics-chart-wrap { padding: 16px; }
+/* Smart suggestions block shown above the charts */
 .suggestions-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
 .suggestions-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 8px; }
 .suggestion-item { font-size: 13px; color: var(--text-secondary); padding: 5px 0; border-bottom: 1px solid var(--border-subtle); }
 .suggestion-item:last-child { border-bottom: none; }
 
-/* ── Table ── */
+/* ── Data Table ───────────────────────────────────────────────────────────── */
 .data-table { width: 100%; border-collapse: collapse; }
 .data-table thead { border-bottom: 1px solid var(--border); }
 .data-table th { padding: 9px 16px; text-align: left; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
 .data-table td { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid var(--border-subtle); }
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tr:hover td { background: var(--bg); }
+/* Utility color classes applied to table cells and spans throughout the app */
 .income { color: var(--income); }
 .expense { color: var(--expense); }
 .positive { color: var(--positive); }
@@ -222,49 +263,61 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .muted { color: var(--text-muted); }
 .table-link { font-size: 12px; color: var(--text-muted); text-decoration: none; }
 .table-link:hover { color: var(--text-primary); }
+/* Income/expense type pills (green / red) */
 .type-badge { font-size: 11px; padding: 2px 7px; border-radius: 99px; font-weight: 600; }
 .type-badge.income { background: var(--income-bg); color: var(--income); }
 .type-badge.expense { background: var(--expense-bg); color: var(--expense); }
 
-/* ── Buttons ── */
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
 .btn { padding: 7px 14px; border-radius: 6px; border: 1px solid transparent; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.12s; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
-.btn-primary { background: var(--text-primary); color: white; border-color: var(--text-primary); }
-.btn-primary:hover { background: #2d2d2d; }
+.btn-primary { background: var(--accent, #9CAB84); color: white; border-color: var(--accent, #9CAB84); }
+.btn-primary:hover { background: var(--accent-hover, #89986D); border-color: var(--accent-hover, #89986D); }
 .btn-ghost { background: var(--surface); color: var(--text-secondary); border-color: var(--border); }
 .btn-ghost:hover { border-color: #bbb; color: var(--text-primary); }
 
-/* ── Modal ── */
+/* ── Modal Overlay ───────────────────────────────────────────────────────────
+   Hidden by default (display:none); .active switches it to flex so content is centred.
+   backdrop-filter adds a subtle blur to the page content behind the modal. */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
 .modal-overlay.active { display: flex; }
 .modal { background: var(--surface); border-radius: 10px; width: 420px; max-width: 94vw; box-shadow: var(--shadow-md), 0 20px 60px rgba(0,0,0,0.15); animation: modalIn 0.18s ease; }
 .modal-wide { width: 520px; }
+/* Entry animation: slight scale + vertical offset fade-in */
 @keyframes modalIn { from { transform: scale(0.96) translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--border); }
 .modal-header h3 { font-size: 15px; font-weight: 600; }
 .modal-close { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--text-muted); padding: 4px; border-radius: 4px; }
 .modal-close:hover { color: var(--text-primary); background: var(--bg); }
+/* max-height + overflow-y prevents tall modals from breaking off-screen */
 .modal-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; max-height: 72vh; overflow-y: auto; }
 .modal-hint { font-size: 12px; color: var(--text-muted); }
 .modal-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 18px; border-top: 1px solid var(--border); }
 
-/* ── Dashboard ── */
+/* ── Dashboard ───────────────────────────────────────────────────────────── */
+/* Inline search bar at the top of the dashboard page */
 .search-inline { display: flex; gap: 10px; margin-bottom: 18px; }
 .search-bar { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--surface); outline: none; transition: border-color 0.12s; }
 .search-bar:focus { border-color: #aaa; }
+/* Dark banner highlighting the active/current month at the top of the dashboard */
 .current-month-banner { background: var(--text-primary); color: white; border-radius: var(--radius); padding: 18px 22px; display: flex; align-items: center; gap: 14px; margin-bottom: 22px; justify-content: space-between; }
 .banner-label { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.8px; }
 .banner-title { font-size: 17px; font-weight: 600; }
-.current-month-banner .btn-primary { background: white; color: var(--text-primary); }
+/* Override primary button colors inside the dark banner for contrast */
+.current-month-banner .btn-primary { background: white; color: var(--accent, #9CAB84); }
 .section-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+/* Responsive auto-fill grid for month cards */
 .months-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+/* Wrapper provides a positioning context for the absolute delete button */
 .month-card-wrap { position: relative; }
 .month-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; text-decoration: none; color: inherit; display: block; transition: all 0.14s; box-shadow: var(--shadow); }
 .month-card:hover { border-color: #ccc; box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .month-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .month-card-name { font-weight: 500; font-size: 14px; }
+/* Status pill: green for open months, grey for closed */
 .status-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px; }
-.status-badge.open { background: #e8f5e9; color: #2e7d32; }
+.status-badge.open { background: #edf3e4; color: #5a7a3a; }
 .status-badge.closed { background: var(--border-subtle); color: var(--text-muted); }
+/* Stat rows inside each month card (income / expense / balance) */
 .stat-row { display: flex; justify-content: space-between; padding: 3px 0; }
 .stat-label { font-size: 12px; color: var(--text-muted); }
 .stat-val { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; }
@@ -272,23 +325,26 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .stat-val.expense { color: var(--expense); }
 .stat-val.positive { color: var(--positive); }
 .stat-val.negative { color: var(--negative); }
+/* Balance row has a top separator to visually distinguish it from income/expense rows */
 .stat-row-balance { border-top: 1px solid var(--border-subtle); margin-top: 4px; padding-top: 5px; }
 .stat-loading { font-size: 12px; color: var(--text-muted); }
+/* Delete button: hidden until the card is hovered, then fades in */
 .delete-month-btn { position: absolute; top: 7px; right: 7px; width: 20px; height: 20px; border-radius: 50%; background: transparent; border: none; cursor: pointer; font-size: 10px; color: var(--text-muted); opacity: 0; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
 .month-card-wrap:hover .delete-month-btn { opacity: 1; }
 .delete-month-btn:hover { background: #fee2e2; color: var(--expense); }
 
-/* ── Empty state ── */
+/* ── Empty State ─────────────────────────────────────────────────────────── */
 .empty-state { text-align: center; padding: 60px 20px; }
 .empty-icon { font-size: 32px; color: var(--border); margin-bottom: 14px; }
 .empty-title { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
 .empty-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
 
-/* ── Search page ── */
+/* ── Search Page ─────────────────────────────────────────────────────────── */
 .results-count { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
 .editable-notice { color: #16a085; font-size: 12px; font-weight: 500; }
 
-/* ── Auth pages ── */
+/* ── Auth Pages (Login / Register) ──────────────────────────────────────────
+   Centered layout for standalone pages that don't use the sidebar shell. */
 .auth-body { background: var(--bg); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
 .auth-wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
 .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 34px 38px; width: 380px; max-width: 94vw; box-shadow: var(--shadow-md); }
@@ -296,6 +352,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .auth-icon { font-size: 22px; }
 .auth-title { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
 .auth-heading { font-size: 20px; font-weight: 600; margin-bottom: 18px; letter-spacing: -0.4px; }
+/* Red error box shown when login/register fails */
 .auth-error { background: #fff0f0; border: 1px solid #f5c6cb; border-radius: 6px; padding: 8px 11px; font-size: 13px; color: #721c24; margin-bottom: 8px; }
 .auth-errors { margin-bottom: 4px; }
 .auth-form { display: flex; flex-direction: column; gap: 12px; }
@@ -304,42 +361,199 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .auth-footer a { color: var(--text-primary); font-weight: 500; text-decoration: none; }
 .label-hint { font-weight: 400; color: var(--text-muted); font-size: 10px; text-transform: none; letter-spacing: 0; }
 .field-hint { font-size: 11px; margin-top: 3px; color: var(--text-muted); }
+/* Password field wrapper: positions the show/hide toggle absolutely inside the input */
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 36px; }
 .pw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px; }
 .pw-strength { font-size: 11px; margin-top: 4px; min-height: 16px; }
+/* Live clock shown on the login page */
 .auth-time-display { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; color: var(--text-primary); letter-spacing: 2px; text-align: center; }
 .auth-date-display { font-size: 12px; color: var(--text-muted); margin-top: 3px; text-align: center; }
 
-/* ── Scrollbar ── */
+/* ── Custom Scrollbar ────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: #bbb; }
 
-/* ── Responsive ── */
+/* ── Responsive — Tablet (≤1200px) ──────────────────────────────────────── */
 @media (max-width: 1200px) {
     .month-body-3col { grid-template-columns: 240px 1fr 250px; }
+    /* Stats grid drops from 4 to 2 columns */
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Responsive — Small Tablet (≤950px) ─────────────────────────────────── */
 @media (max-width: 950px) {
+    /* Chart column wraps below the form and transaction list */
     .month-body-3col { grid-template-columns: 220px 1fr; }
     .col-chart { grid-column: 1 / -1; }
+    /* Analytics charts stack vertically */
     .analytics-charts-row { grid-template-columns: 1fr; }
 }
-@media (max-width: 700px) {
-    .month-body-3col { grid-template-columns: 1fr; }
-    .main-content { padding: 16px; }
-    .stats-grid { grid-template-columns: 1fr 1fr; }
-}
-@media (max-width: 480px) {
-    .sidebar { width: 56px; min-width: 56px; }
-    .brand-name, .nav-item span:last-child, .nav-section-label, .closed-badge, .sidebar-user span:not(.logout-btn), .clock-date { display: none; }
-    .sidebar-brand { justify-content: center; padding: 14px 8px; }
-    .nav-item { justify-content: center; }
+
+/* ── Responsive — Mobile (≤768px) ───────────────────────────────────────────
+   The sidebar disappears from the left and becomes a slide-in drawer.
+   Navigation moves to the bottom navigation bar. */
+@media (max-width: 768px) {
+
+    /* CSS variable for bottom nav height, used in padding calculations below */
+    :root { --bottom-nav-h: 62px; }
+
+    /* App shell becomes block layout (sidebar is no longer in the flow) */
+    .app-shell { display: block; height: 100%; overflow: visible; }
+
+    /* Sidebar: hidden off-screen to the left, slides in as a fixed overlay drawer */
+    .sidebar {
+        position: fixed;
+        top: 0; left: 0;
+        height: 100%;
+        width: 280px;
+        z-index: 200;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: none;
+    }
+    /* Drawer open state: slide into view and add shadow for depth */
+    .sidebar.drawer-open {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0,0,0,0.18);
+    }
+
+    /* Close button inside the drawer (hidden on desktop via media query below) */
+    .sidebar-close-btn {
+        display: flex;
+        margin-left: auto;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        color: var(--text-muted);
+        padding: 4px 6px;
+        border-radius: 4px;
+        line-height: 1;
+    }
+    .sidebar-close-btn:hover { color: var(--text-primary); background: var(--bg); }
+
+    /* Prevent body from scrolling while the drawer is open */
+    body.drawer-is-open { overflow: hidden; }
+
+    /* Dark overlay behind the open drawer; clicking it closes the drawer */
+    .mobile-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 199;
+        backdrop-filter: blur(1px);
+    }
+    .mobile-overlay.active { display: block; }
+
+    /* Main content: full width with bottom padding to clear the fixed bottom nav */
+    .main-content {
+        width: 100%;
+        padding: 16px 16px calc(var(--bottom-nav-h) + 16px);
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    /* Bottom navigation bar: fixed at the bottom, one icon per route */
+    .bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        height: var(--bottom-nav-h);
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        z-index: 100;
+        /* Respect iPhone home bar safe area */
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .bottom-nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        text-decoration: none;
+        color: var(--text-muted);
+        font-size: 10px;
+        font-family: 'DM Sans', sans-serif;
+        background: none;
+        border: none;
+        cursor: pointer;
+        /* 44pt minimum touch target height (Apple HIG guideline) */
+        min-height: 44px;
+        padding: 6px 4px;
+        transition: color 0.12s;
+        /* Remove default tap highlight on iOS/Android */
+        -webkit-tap-highlight-color: transparent;
+    }
+    .bottom-nav-item.active { color: var(--text-primary); }
+    .bottom-nav-item:active { background: var(--bg); }
+    .bottom-nav-icon {
+        font-size: 18px;
+        line-height: 1;
+        display: block;
+    }
+    .bottom-nav-label { font-size: 10px; font-weight: 500; }
+
+    /* All multi-column layouts become single column on mobile */
+    .month-body-3col  { grid-template-columns: 1fr; gap: 12px; }
+    .stats-grid       { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .months-grid      { grid-template-columns: 1fr; }
+    .late-form-grid   { grid-template-columns: 1fr; }
+
+    /* Compact stat cards */
+    .stat-card { padding: 12px 14px; }
+    .stat-card-value { font-size: 17px; }
+
+    /* Page header stacks title and action buttons vertically */
+    .page-header { flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .page-title { font-size: 19px; }
+    .header-actions { flex-wrap: wrap; gap: 6px; }
+    .header-actions .btn { font-size: 12px; padding: 6px 10px; }
+
+    /* Larger tap targets for transaction rows */
+    .trans-item { padding: 12px 14px; }
+    .trans-cat { font-size: 14px; }
+
+    /* font-size: 16px prevents iOS Safari from auto-zooming into inputs */
+    .form-group input,
+    .form-group select,
+    .cat-select-styled {
+        font-size: 16px;
+        padding: 10px 12px;
+    }
+    .full-width { width: calc(100% - 28px); margin: 10px 14px 14px; }
+
+    /* Modals use nearly full screen width on small devices */
+    .modal { width: 94vw; margin: 0 auto; }
+    .modal-wide { width: 94vw; }
+
+    /* Smaller calendar cells on mobile */
+    .cal-cell { min-height: 56px; padding: 4px 3px; }
+    .cal-day-num { font-size: 12px; width: 20px; height: 20px; }
+    .cal-exp, .cal-inc { font-size: 9px; }
+    .cal-summary-bar { flex-wrap: wrap; gap: 12px; padding: 12px 14px; }
+
+    /* Auth card fills full width with no rounded corners on mobile */
+    .auth-card { width: 100%; border-radius: 0; border-left: none; border-right: none; padding: 28px 20px; }
+
+    /* Ensure the close button is visible inside the mobile drawer */
+    .sidebar-close-btn { display: flex; }
 }
 
-/* ── Privacy Toggle Button ── */
+/* ── Desktop: hide mobile-only elements ─────────────────────────────────── */
+@media (min-width: 769px) {
+    .bottom-nav      { display: none; }
+    .mobile-overlay  { display: none !important; }
+    .sidebar-close-btn { display: none; }
+    :root { --bottom-nav-h: 0px; }
+}
+
+/* ── Privacy Toggle Button ───────────────────────────────────────────────── */
 .privacy-btn {
     background: none; border: none; cursor: pointer;
     font-size: 13px; padding: 2px 4px; border-radius: 4px;
@@ -348,8 +562,10 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 }
 .privacy-btn:hover { background: var(--bg); color: var(--text-primary); }
 
-/* ── Privacy Mode — κρύβει ΟΛΑ τα ποσά παντού ── */
-/* Η τεχνική: blur αντί display:none ώστε η σελίδα να μην αναδιαρρυθμίζεται */
+/* ── Privacy Mode ────────────────────────────────────────────────────────────
+   When .privacy-mode is on the body, ALL monetary values are blurred.
+   We use blur() instead of display:none so layout doesn't shift.
+   Hovering an element temporarily unblurs it for quick reference. */
 .privacy-mode .stat-card-value,
 .privacy-mode .trans-amount,
 .privacy-mode .stat-val,
@@ -362,18 +578,28 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .privacy-mode .data-table td.expense,
 .privacy-mode .data-table td.positive,
 .privacy-mode .data-table td.negative,
-.privacy-mode .data-table td.mono {
+.privacy-mode .data-table td.mono,
+.privacy-mode .cal-exp,
+.privacy-mode .cal-inc,
+.privacy-mode .cal-sum-val,
+.privacy-mode .dm-income,
+.privacy-mode .dm-expense,
+.privacy-mode .dmt-amount {
     filter: blur(6px);
     user-select: none;
     transition: filter 0.2s ease;
     cursor: default;
 }
 
-/* Hover αποκαλύπτει το ποσό προσωρινά */
+/* Hover reveals individual blurred amounts temporarily */
 .privacy-mode .stat-card:hover .stat-card-value,
 .privacy-mode .stat-card:hover .stat-card-sub,
 .privacy-mode .trans-item:hover .trans-amount,
 .privacy-mode .legend-item:hover .legend-val,
+.privacy-mode .cal-cell:hover .cal-exp,
+.privacy-mode .cal-cell:hover .cal-inc,
+.privacy-mode .cal-sum-item:hover .cal-sum-val,
+.privacy-mode .day-modal-trans:hover .dmt-amount,
 .privacy-mode .data-table tr:hover td.income,
 .privacy-mode .data-table tr:hover td.expense,
 .privacy-mode .data-table tr:hover td.positive,
@@ -383,18 +609,844 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
     transition: filter 0.15s ease;
 }
 
-/* Κρύβει και τα charts (canvas) */
+/* Charts (canvas elements) are also blurred in privacy mode */
 .privacy-mode canvas {
     filter: blur(8px);
     transition: filter 0.2s ease;
 }
+/* Hovering the card temporarily reveals the chart */
 .privacy-mode .card:hover canvas {
     filter: blur(0);
     transition: filter 0.2s ease;
 }
 
-/* Indicator στη sidebar όταν είναι ενεργό */
+/* Privacy button gets a visible background when privacy mode is active */
 .privacy-mode .privacy-btn {
     color: var(--text-primary);
     background: var(--border-subtle);
+}
+
+/* ── Calendar ─────────────────────────────────────────────────────────────── */
+/* Month navigation row: arrows, month+year title, and "Today" button */
+.cal-nav {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+.cal-nav-btn {
+    width: 32px; height: 32px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: var(--text-secondary); cursor: pointer;
+    text-decoration: none; transition: all 0.12s; flex-shrink: 0;
+}
+.cal-nav-btn:hover { border-color: #aaa; color: var(--text-primary); }
+.cal-nav-title { display: flex; align-items: baseline; gap: 8px; flex: 1; }
+.cal-month-name { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+.cal-year { font-size: 14px; color: var(--text-muted); }
+.cal-today-btn { margin-left: auto; font-size: 12px; padding: 5px 12px; }
+
+/* Calendar grid container card */
+.cal-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+    margin-bottom: 16px;
+}
+/* 7-column grid, one column per day of the week */
+.cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+}
+.cal-header-cell {
+    padding: 10px 0; text-align: center;
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.6px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+}
+/* Day cell: click opens the day detail modal */
+.cal-cell {
+    min-height: 88px; padding: 8px 8px 6px;
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer; transition: background 0.1s;
+    position: relative; vertical-align: top;
+}
+/* Remove border from last cell in each row */
+.cal-cell:nth-child(7n) { border-right: none; }
+.cal-cell:hover { background: var(--bg); }
+/* Empty filler cells before the 1st of the month */
+.cal-cell.cal-empty { cursor: default; background: transparent; }
+.cal-cell.cal-empty:hover { background: transparent; }
+/* Today's date gets a light blue tint */
+.cal-cell.cal-today { background: #f0f7ff; }
+.cal-cell.cal-today:hover { background: #e6f0fc; }
+.cal-cell.cal-has-data { }
+
+/* Day number in the top-left of each cell; today gets a filled circle */
+.cal-day-num {
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; margin-bottom: 4px;
+}
+.cal-today-num {
+    background: var(--text-primary); color: white;
+}
+/* Mini income/expense summary shown below the day number */
+.cal-day-summary {
+    display: flex; flex-direction: column; gap: 1px; margin-bottom: 4px;
+}
+.cal-exp {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--expense); font-weight: 500;
+}
+.cal-inc {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--income); font-weight: 500;
+}
+/* Row of colored dots (up to 4) representing individual transactions */
+.cal-dots {
+    display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px;
+}
+.cal-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.cal-dot.income  { background: var(--income); }
+.cal-dot.expense { background: var(--expense); }
+/* "+N" label when there are more than 4 transactions in a day */
+.cal-dot-more {
+    font-size: 9px; color: var(--text-muted); line-height: 6px;
+}
+
+/* Calendar month summary bar below the grid */
+.cal-summary-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 20px;
+    display: flex; gap: 32px; box-shadow: var(--shadow);
+}
+.cal-sum-item { display: flex; flex-direction: column; gap: 3px; }
+.cal-sum-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+.cal-sum-val { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; }
+.cal-sum-val.income   { color: var(--income); }
+.cal-sum-val.expense  { color: var(--expense); }
+.cal-sum-val.positive { color: var(--positive); }
+.cal-sum-val.negative { color: var(--negative); }
+
+/* Day detail modal content: summary + individual transaction rows */
+.day-modal-sum {
+    display: flex; gap: 12px; padding: 8px 0 10px;
+    border-bottom: 1px solid var(--border-subtle); margin-bottom: 4px;
+}
+.dm-income  { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--income); }
+.dm-expense { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--expense); }
+.day-modal-trans {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border-subtle);
+    gap: 12px;
+}
+.day-modal-trans:last-child { border-bottom: none; }
+.dmt-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dmt-cat { font-size: 13px; font-weight: 500; }
+.dmt-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.dmt-amount { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; flex-shrink: 0; }
+.dmt-amount.income  { color: var(--income); }
+.dmt-amount.expense { color: var(--expense); }
+
+/* Calendar-specific mobile overrides (narrower breakpoint than the main 768px one) */
+@media (max-width: 700px) {
+    .cal-cell { min-height: 60px; padding: 5px 4px; }
+    .cal-day-num { font-size: 12px; width: 20px; height: 20px; }
+    .cal-exp, .cal-inc { font-size: 10px; }
+    .cal-summary-bar { flex-wrap: wrap; gap: 16px; }
+}
+
+/* ── Closed Month UI ─────────────────────────────────────────────────────── */
+/* Badge shown in the page subtitle when viewing a closed month */
+.closed-month-badge {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* Read-only fixed expense indicator (shown in closed months, no interaction) */
+.fixed-check-readonly {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1.5px solid #ddd; background: var(--bg);
+    font-size: 10px; display: inline-flex; align-items: center;
+    justify-content: center; flex-shrink: 0; color: var(--text-muted);
+    cursor: default;
+}
+/* Paid state of the read-only indicator: green check */
+.fixed-check-readonly.paid {
+    background: #edf3e4; border-color: #C5D89D; color: #5a7a3a;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Dashboard Charts
+   ═══════════════════════════════════════════════════════════════════ */
+
+.dash-stats {
+    margin-bottom: 16px;
+}
+
+.dash-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.dash-chart-card {
+    min-height: 280px;
+}
+.dash-chart-small {
+    min-height: 240px;
+}
+.dash-chart-body {
+    padding: 12px 16px 16px;
+    position: relative;
+    height: 260px;
+}
+
+@media (max-width: 900px) {
+    .dash-charts-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   Dark Mode — Deep teal/emerald palette
+   #091413 (deepest bg), #285A48 (mid), #408A71 (accent), #B0E4CC (light)
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-theme="dark"] {
+    --bg: #091413;
+    --surface: #0e1f1c;
+    --border: #1a3a30;
+    --border-subtle: #153028;
+    --text-primary: #B0E4CC;
+    --text-secondary: #7dbfa6;
+    --text-muted: #4a8a72;
+    --income: #6ee7a8;
+    --income-bg: #0e2a1e;
+    --expense: #f0867a;
+    --expense-bg: #2a1414;
+    --positive: #6ee7a8;
+    --negative: #ef6b6b;
+    --accent: #408A71;
+    --accent-hover: #285A48;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Sidebar */
+[data-theme="dark"] .sidebar {
+    background: #0b1a17;
+    border-right-color: #1a3a30;
+}
+
+/* Cards */
+[data-theme="dark"] .card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .month-card,
+[data-theme="dark"] .current-month-banner,
+[data-theme="dark"] .late-entry-card,
+[data-theme="dark"] .fixed-reminder-bar {
+    background: var(--surface);
+    border-color: var(--border);
+}
+
+/* Auth pages */
+[data-theme="dark"] .auth-body {
+    background: #091413;
+}
+[data-theme="dark"] .auth-card {
+    background: #0e1f1c;
+    border-color: #1a3a30;
+}
+
+/* Inputs */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background: #0b1a17;
+    border-color: #1a3a30;
+    color: var(--text-primary);
+}
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus {
+    border-color: #408A71;
+    outline-color: #408A71;
+}
+[data-theme="dark"] input::placeholder {
+    color: #3a6b58;
+}
+
+/* Buttons */
+[data-theme="dark"] .btn-primary {
+    background: #408A71;
+    border-color: #408A71;
+    color: #e8fff4;
+}
+[data-theme="dark"] .btn-primary:hover {
+    background: #4a9e82;
+    border-color: #4a9e82;
+}
+[data-theme="dark"] .btn-ghost {
+    color: var(--text-secondary);
+    border-color: var(--border);
+}
+[data-theme="dark"] .btn-ghost:hover {
+    background: #122b25;
+    border-color: #285A48;
+}
+
+/* Modal */
+[data-theme="dark"] .modal-overlay {
+    background: rgba(5, 12, 11, 0.8);
+}
+[data-theme="dark"] .modal {
+    background: #0e1f1c;
+    border: 1px solid #1a3a30;
+}
+
+/* Stat cards */
+[data-theme="dark"] .stat-card {
+    background: #0b1a17;
+}
+[data-theme="dark"] .income-card {
+    background: #0e2a1e;
+}
+[data-theme="dark"] .expense-card {
+    background: #2a1414;
+}
+[data-theme="dark"] .balance-card.positive {
+    background: #0e2a1e;
+}
+[data-theme="dark"] .balance-card.negative {
+    background: #2a1414;
+}
+
+/* Transaction hover */
+[data-theme="dark"] .trans-item:hover {
+    background: #122b25;
+}
+
+/* Alerts */
+[data-theme="dark"] .alert-item {
+    background: #0b1a17;
+    border-color: #1a3a30;
+}
+
+/* Status badges */
+[data-theme="dark"] .status-badge.closed {
+    background: #1a3a30;
+    color: #4a8a72;
+}
+[data-theme="dark"] .status-badge.open {
+    background: #0e2a1e;
+    color: #6ee7a8;
+}
+
+/* Bottom nav */
+[data-theme="dark"] .bottom-nav {
+    background: #0b1a17;
+    border-top-color: #1a3a30;
+}
+
+/* Mobile overlay */
+[data-theme="dark"] .mobile-overlay.active {
+    background: rgba(5, 12, 11, 0.7);
+}
+
+/* Search bar */
+[data-theme="dark"] .search-bar {
+    background: #0b1a17;
+    border-color: #1a3a30;
+    color: var(--text-primary);
+}
+
+/* Privacy mode */
+[data-theme="dark"] .privacy-mode .stat-card-value,
+[data-theme="dark"] .privacy-mode .trans-amount,
+[data-theme="dark"] .privacy-mode .stat-val {
+    color: transparent;
+    text-shadow: 0 0 12px rgba(176,228,204,0.3);
+}
+
+/* Card header */
+[data-theme="dark"] .card-header {
+    border-bottom-color: #1a3a30;
+}
+
+/* Nav items */
+[data-theme="dark"] .nav-item:hover {
+    background: #122b25;
+}
+[data-theme="dark"] .nav-item.active {
+    background: #285A48;
+    color: #B0E4CC;
+}
+
+/* Budget rows */
+[data-theme="dark"] .budget-row {
+    border-bottom-color: #1a3a30;
+}
+
+/* Fixed items */
+[data-theme="dark"] .fixed-item.paid {
+    background: #0e2a1e;
+    border-color: #285A48;
+}
+[data-theme="dark"] .fixed-item.paid .fixed-check {
+    background: #408A71;
+    border-color: #408A71;
+}
+[data-theme="dark"] .fixed-check-readonly.paid {
+    background: #0e2a1e;
+    border-color: #285A48;
+    color: #6ee7a8;
+}
+
+/* Delete button hover */
+[data-theme="dark"] .delete-month-btn:hover {
+    background: #2a1414;
+    color: var(--expense);
+}
+
+/* Current month banner */
+[data-theme="dark"] .current-month-banner .btn-primary {
+    background: #B0E4CC;
+    color: #091413;
+}
+
+/* Scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: #0b1a17;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: #285A48;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: #408A71;
+}
+
+/* Profile danger card */
+[data-theme="dark"] .profile-danger-card {
+    border-left-color: var(--expense);
+}
+
+/* Late entry card */
+[data-theme="dark"] .late-info-card {
+    border-left-color: #408A71;
+}
+
+/* Row alternating in dark */
+[data-theme="dark"] .fixed-manage-row:nth-child(even) {
+    background: #0b1a17;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Toggle Button Group (Profile Appearance Settings)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.toggle-group {
+    display: inline-flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.toggle-btn {
+    padding: 5px 14px;
+    font-size: 12px;
+    font-family: inherit;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.toggle-btn + .toggle-btn {
+    border-left: 1px solid var(--border);
+}
+.toggle-btn.active {
+    background: var(--accent, #9CAB84);
+    color: white;
+    font-weight: 500;
+}
+.toggle-btn:hover:not(.active) {
+    background: var(--border-subtle);
+}
+
+[data-theme="dark"] .toggle-btn.active {
+    background: #408A71;
+    color: #e8fff4;
+}
+[data-theme="dark"] .toggle-btn:hover:not(.active) {
+    background: #122b25;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   Compact Density Mode
+   Reduces padding, font sizes, and gaps across the entire app.
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-density="compact"] .sidebar {
+    width: 180px;
+    min-width: 180px;
+}
+[data-density="compact"] {
+    --sidebar-w: 180px;
+}
+[data-density="compact"] .sidebar-brand { padding: 12px 14px 10px; }
+[data-density="compact"] .sidebar-clock { padding: 6px 14px 8px; }
+[data-density="compact"] .clock-time { font-size: 15px; }
+[data-density="compact"] .sidebar-user { padding: 5px 14px 7px; }
+[data-density="compact"] .nav-item { padding: 6px 14px; font-size: 12px; }
+[data-density="compact"] .nav-section-label { padding: 8px 14px 3px; font-size: 9px; }
+
+[data-density="compact"] .page-header { padding: 12px 0 8px; }
+[data-density="compact"] .page-title { font-size: 20px; }
+[data-density="compact"] .page-sub { font-size: 11px; }
+
+[data-density="compact"] .stats-grid { gap: 10px; }
+[data-density="compact"] .stat-card { padding: 10px 12px; }
+[data-density="compact"] .stat-card-label { font-size: 10px; }
+[data-density="compact"] .stat-card-value { font-size: 17px; }
+
+[data-density="compact"] .card-header { padding: 10px 14px; font-size: 12px; }
+[data-density="compact"] .form-group { padding: 4px 14px; }
+[data-density="compact"] .form-group label { font-size: 11px; margin-bottom: 2px; }
+[data-density="compact"] .form-group input,
+[data-density="compact"] .form-group select {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+[data-density="compact"] .trans-item { padding: 6px 14px; }
+[data-density="compact"] .trans-cat { font-size: 12px; }
+[data-density="compact"] .trans-date { font-size: 10px; }
+[data-density="compact"] .trans-amount { font-size: 13px; }
+
+[data-density="compact"] .month-card { padding: 12px 14px; }
+[data-density="compact"] .month-card-name { font-size: 13px; }
+[data-density="compact"] .months-grid { gap: 10px; }
+
+[data-density="compact"] .btn { padding: 5px 12px; font-size: 12px; }
+[data-density="compact"] .btn-primary { padding: 6px 14px; }
+
+[data-density="compact"] .fixed-item { padding: 6px 10px; }
+[data-density="compact"] .fixed-reminder-title { font-size: 12px; padding: 8px 12px; }
+
+[data-density="compact"] .alert-item { padding: 8px 12px; font-size: 12px; }
+
+[data-density="compact"] .budget-row { padding: 5px 0; }
+[data-density="compact"] .modal-body { padding: 14px 18px; }
+[data-density="compact"] .modal-header { padding: 12px 18px; }
+[data-density="compact"] .modal-footer { padding: 10px 18px; }
+
+[data-density="compact"] .dash-charts-row { gap: 10px; margin-bottom: 16px; }
+[data-density="compact"] .dash-chart-body { height: 200px; padding: 8px 12px 12px; }
+
+[data-density="compact"] .section-title { font-size: 13px; margin: 12px 0 8px; }
+[data-density="compact"] .search-inline { margin-bottom: 10px; }
+[data-density="compact"] .search-bar { padding: 7px 14px; font-size: 12px; }
+
+/* Compact bottom nav */
+[data-density="compact"] .bottom-nav { height: 52px; }
+[data-density="compact"] .bottom-nav-icon { font-size: 16px; }
+[data-density="compact"] .bottom-nav-label { font-size: 9px; }
+
+/* Profile compact */
+[data-density="compact"] .profile-grid { gap: 10px; }
+[data-density="compact"] .profile-info-row { padding: 7px 14px; font-size: 12px; }
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   UI Polish — Transitions & Animations
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Smooth transitions on all interactive elements */
+.card,
+.stat-card,
+.month-card,
+.btn,
+.nav-item,
+.trans-item,
+.fixed-item,
+.alert-item,
+.bottom-nav-item {
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+/* Card hover lift */
+.month-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.stat-card:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Button press effect */
+.btn:active {
+    transform: scale(0.97);
+}
+
+/* Nav items smooth transition */
+.nav-item {
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* Modal animations */
+.modal-overlay {
+    transition: opacity 0.2s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+.modal {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    transform: translateY(20px) scale(0.97);
+    opacity: 0;
+}
+.modal-overlay.active .modal {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+/* Transaction row hover */
+.trans-item:hover {
+    background: var(--border-subtle);
+}
+
+/* Fixed item check animation */
+.fixed-check {
+    transition: all 0.2s ease;
+}
+.fixed-check:hover {
+    transform: scale(1.1);
+}
+
+/* Smooth page load fade-in */
+.main-content {
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Sidebar drawer animation (mobile) */
+.sidebar {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Input focus animation */
+input:focus,
+select:focus {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 0 0 3px rgba(156, 171, 132, 0.15);
+}
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus {
+    box-shadow: 0 0 0 3px rgba(64, 138, 113, 0.2);
+}
+
+/* Bottom nav item active indicator */
+.bottom-nav-item.active {
+    position: relative;
+}
+.bottom-nav-item.active::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 3px;
+    background: var(--accent, #9CAB84);
+    border-radius: 0 0 3px 3px;
+}
+[data-theme="dark"] .bottom-nav-item.active::after {
+    background: #408A71;
+}
+
+/* Smooth color transitions for theme switching */
+html {
+    transition: background-color 0.3s ease;
+}
+body, .sidebar, .card, .stat-card, .modal, input, select {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   Calculator Modal
+   ═══════════════════════════════════════════════════════════════════ */
+
+.calc-modal {
+    width: 320px;
+    max-width: 95vw;
+}
+.calc-body {
+    padding: 0;
+}
+.calc-display {
+    padding: 16px 20px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    min-height: 72px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+.calc-expr {
+    font-size: 12px;
+    color: var(--text-muted);
+    min-height: 18px;
+}
+.calc-result {
+    font-family: 'DM Mono', monospace;
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--text-primary);
+    word-break: break-all;
+    line-height: 1.2;
+}
+
+.calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    padding: 8px;
+}
+.calc-btn {
+    padding: 14px 0;
+    font-size: 18px;
+    font-family: inherit;
+    border: none;
+    background: var(--surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.12s, transform 0.1s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.calc-btn:hover {
+    background: var(--border-subtle);
+}
+.calc-btn:active {
+    transform: scale(0.93);
+    background: var(--border);
+}
+
+.calc-fn {
+    color: var(--text-muted);
+    font-size: 16px;
+}
+.calc-op {
+    color: var(--accent, #9CAB84);
+    font-weight: 600;
+    font-size: 20px;
+}
+.calc-eq {
+    background: var(--accent, #9CAB84);
+    color: white;
+    font-weight: 600;
+    font-size: 20px;
+}
+.calc-eq:hover {
+    background: var(--accent-hover, #89986D);
+}
+.calc-zero {
+    grid-column: span 2;
+}
+
+/* Dark mode calculator */
+[data-theme="dark"] .calc-btn {
+    background: #0e1f1c;
+    color: var(--text-primary);
+}
+[data-theme="dark"] .calc-btn:hover {
+    background: #1a3a30;
+}
+[data-theme="dark"] .calc-btn:active {
+    background: #285A48;
+}
+[data-theme="dark"] .calc-op {
+    color: #6ee7a8;
+}
+[data-theme="dark"] .calc-eq {
+    background: #408A71;
+}
+[data-theme="dark"] .calc-eq:hover {
+    background: #4a9e82;
+}
+[data-theme="dark"] .calc-display {
+    border-bottom-color: #1a3a30;
+}
+
+/* Compact density calculator */
+[data-density="compact"] .calc-modal {
+    width: 280px;
+}
+[data-density="compact"] .calc-btn {
+    padding: 10px 0;
+    font-size: 16px;
+}
+[data-density="compact"] .calc-result {
+    font-size: 24px;
+}
+[data-density="compact"] .calc-display {
+    padding: 10px 16px 8px;
+    min-height: 56px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   Collapsible Months List in Sidebar
+   ═══════════════════════════════════════════════════════════════════ */
+
+.nav-section-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 8px 18px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+    font-family: inherit;
+}
+.nav-section-toggle:hover {
+    color: var(--text-primary);
+    background: var(--border-subtle);
+}
+.toggle-arrow {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.nav-months-list {
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+    max-height: 2000px;
+    opacity: 1;
+}
+.nav-months-list.collapsed {
+    max-height: 0;
+    opacity: 0;
 }

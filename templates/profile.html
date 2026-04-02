@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}Ρυθμίσεις Προφίλ{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Προφίλ</h1>
+        <p class="page-sub">Ρυθμίσεις λογαριασμού</p>
+    </div>
+</div>
+
+<!-- Flash messages (FIX: explicit escaping to prevent XSS) -->
+{% if success %}
+<div class="alert-item alert-info" style="margin-bottom:16px">✓ {{ success|e }}</div>
+{% endif %}
+{% if error %}
+<div class="alert-item alert-danger" style="margin-bottom:16px">{{ error|e }}</div>
+{% endif %}
+
+<div class="profile-grid">
+
+    <!-- ── Account Info Card ── -->
+    <div class="card profile-card">
+        <div class="card-header">👤 Στοιχεία Λογαριασμού</div>
+        <div class="profile-info-body">
+            <div class="profile-info-row">
+                <span class="profile-info-label">Όνομα χρήστη:</span>
+                <span class="profile-info-val mono">{{ username }}</span>
+            </div>
+            <div class="profile-info-row">
+                <span class="profile-info-label">Μέλος από:</span>
+                <span class="profile-info-val mono">{{ created_at[:10] }}</span>
+            </div>
+            <div class="profile-info-row">
+                <span class="profile-info-label">Σύνολο μηνών:</span>
+                <span class="profile-info-val mono">{{ total_months }}</span>
+            </div>
+            <div class="profile-info-row">
+                <span class="profile-info-label">Σύνολο κινήσεων</span>
+                <span class="profile-info-val mono">{{ total_transactions }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Appearance Settings Card ── -->
+    <div class="card profile-card">
+        <div class="card-header">🎨 Εμφάνιση</div>
+        <div class="profile-info-body">
+            <!-- Dark/Light Mode -->
+            <div class="profile-info-row">
+                <span class="profile-info-label">Θέμα</span>
+                <div class="toggle-group" id="themeToggle">
+                    <button class="toggle-btn active" data-value="light" onclick="setThemePref('light')">☀️ Φωτεινό</button>
+                    <button class="toggle-btn" data-value="dark" onclick="setThemePref('dark')">🌙 Σκοτεινό</button>
+                </div>
+            </div>
+            <!-- Privacy mode -->
+            <div class="profile-info-row">
+                <span class="profile-info-label">Απόκρυψη ποσών</span>
+                <div class="toggle-group" id="privacyToggleProfile">
+                    <button class="toggle-btn active" data-value="off" onclick="setPrivacyPref(false)">Εμφανή</button>
+                    <button class="toggle-btn" data-value="on" onclick="setPrivacyPref(true)">Κρυφά</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Change Username Card ── -->
+    <div class="card profile-card">
+        <div class="card-header">Αλλαγή Username</div>
+        <form method="POST" action="{{ url_for('profile') }}" class="profile-form">
+            <input type="hidden" name="action" value="change_username">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>Νέο Username <span class="label-hint">(8–12 χαρακτήρες)</span></label>
+                <input type="text" name="new_username" placeholder="π.χ. NewName_1"
+                       minlength="8" maxlength="12" required
+                       value="{{ username }}">
+            </div>
+            <div class="form-group">
+                <label>Κωδικός (επιβεβαίωση)</label>
+                <div class="pw-wrap">
+                    <input type="password" name="confirm_password" id="confirmPwUser"
+                           placeholder="••••••••" required>
+                    <button type="button" class="pw-toggle" onclick="togglePw('confirmPwUser', this)">👁</button>
+                </div>
+            </div>
+            <div style="padding:10px 16px 16px">
+                <button type="submit" class="btn btn-primary full-width" style="margin:0;width:100%">
+                    Αποθήκευση Username
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── Change Password Card ── -->
+    <div class="card profile-card">
+        <div class="card-header">Αλλαγή Κωδικού</div>
+        <form method="POST" action="{{ url_for('profile') }}" class="profile-form">
+            <input type="hidden" name="action" value="change_password">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>Τρέχων Κωδικός</label>
+                <div class="pw-wrap">
+                    <input type="password" name="current_password" id="currentPw"
+                           placeholder="••••••••" required>
+                    <button type="button" class="pw-toggle" onclick="togglePw('currentPw', this)">👁</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Νέος Κωδικός <span class="label-hint">(8+, κεφαλαίο, αριθμός, σύμβολο)</span></label>
+                <div class="pw-wrap">
+                    <input type="password" name="new_password" id="newPw"
+                           placeholder="••••••••" required>
+                    <button type="button" class="pw-toggle" onclick="togglePw('newPw', this)">👁</button>
+                </div>
+                <!-- Live password strength indicator -->
+                <div class="pw-strength" id="newPwStrength"></div>
+            </div>
+            <div class="form-group">
+                <label>Επιβεβαίωση Νέου Κωδικού</label>
+                <div class="pw-wrap">
+                    <input type="password" name="confirm_new_password" id="confirmNewPw"
+                           placeholder="••••••••" required>
+                    <button type="button" class="pw-toggle" onclick="togglePw('confirmNewPw', this)">👁</button>
+                </div>
+                <div class="field-hint" id="confirmNewHint"></div>
+            </div>
+            <div style="padding:10px 16px 16px">
+                <button type="submit" class="btn btn-primary full-width" style="margin:0;width:100%">
+                    Αποθήκευση Κωδικού
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── Danger Zone: Delete Account ── -->
+    <div class="card profile-card profile-danger-card">
+        <div class="card-header">⚠ Επικίνδυνη Ζώνη</div>
+        <div class="profile-danger-body">
+            <p>Η διαγραφή λογαριασμού είναι <strong>μόνιμη</strong> και <strong>μη αναιρέσιμη</strong>.</p>
+            <p>Θα διαγραφούν όλοι οι μήνες, κινήσεις και ρυθμίσεις σου.</p>
+            <button class="btn btn-danger" onclick="openDeleteModal()">
+                🗑 Διαγραφή Λογαριασμού
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<!-- Delete Account Modal -->
+<div class="modal-overlay" id="deleteAccountModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>⚠ Διαγραφή Λογαριασμού</h3>
+            <button class="modal-close" onclick="document.getElementById('deleteAccountModal').classList.remove('active')">✕</button>
+        </div>
+        <form method="POST" action="{{ url_for('profile') }}">
+            <input type="hidden" name="action" value="delete_account">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-body">
+                <p style="color:var(--expense);font-weight:500;margin-bottom:12px">
+                    Αυτή η ενέργεια είναι μόνιμη και δεν μπορεί να αναιρεθεί.
+                </p>
+                <div class="form-group" style="padding:0">
+                    <label>Πληκτρολόγησε τον κωδικό σου για επιβεβαίωση</label>
+                    <div class="pw-wrap" style="margin-top:5px">
+                        <input type="password" name="delete_password" id="deletePw"
+                               placeholder="••••••••" required>
+                        <button type="button" class="pw-toggle" onclick="togglePw('deletePw', this)">👁</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost"
+                        onclick="document.getElementById('deleteAccountModal').classList.remove('active')">
+                    Ακύρωση
+                </button>
+                <button type="submit" class="btn btn-danger">Διαγραφή για πάντα</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePw(id, btn) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+
+function openDeleteModal() {
+    document.getElementById('deleteAccountModal').classList.add('active');
+}
+
+// Live password strength for the new password field
+const newPwEl      = document.getElementById('newPw');
+const strengthEl   = document.getElementById('newPwStrength');
+const confirmNewEl = document.getElementById('confirmNewPw');
+const confirmHint  = document.getElementById('confirmNewHint');
+
+if (newPwEl) {
+    newPwEl.addEventListener('input', function () {
+        const v = this.value;
+        let score = 0, tips = [];
+        if (v.length >= 8) score++; else tips.push('8+ χαρακτήρες');
+        if (/[A-Z]/.test(v)) score++; else tips.push('κεφαλαίο');
+        if (/[0-9]/.test(v)) score++; else tips.push('αριθμό');
+        if (/[^A-Za-z0-9]/.test(v)) score++; else tips.push('σύμβολο');
+        const labels = ['', 'Αδύναμος', 'Μέτριος', 'Καλός', 'Ισχυρός'];
+        const colors = ['', '#e74c3c', '#f39c12', '#3498db', '#27ae60'];
+        strengthEl.innerHTML = v.length
+            ? `<span style="color:${colors[score]}">${labels[score]}</span>${tips.length ? ' — λείπει: ' + tips.join(', ') : ' ✓'}`
+            : '';
+    });
+}
+
+// Live confirm password match
+if (confirmNewEl) {
+    confirmNewEl.addEventListener('input', function () {
+        const match = this.value === newPwEl.value;
+        confirmHint.textContent = this.value ? (match ? '✓ Ταιριάζουν' : '✕ Δεν ταιριάζουν') : '';
+        confirmHint.style.color = match ? '#27ae60' : '#e74c3c';
+    });
+}
+
+// ── Appearance Settings ──────────────────────────────────────
+function updateToggleGroup(groupId, value) {
+    document.querySelectorAll(`#${groupId} .toggle-btn`).forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === value);
+    });
+}
+
+// Theme (dark/light)
+function setThemePref(theme) {
+    localStorage.setItem('financeDarkMode', theme === 'dark' ? '1' : '0');
+    document.documentElement.setAttribute('data-theme', theme);
+    updateToggleGroup('themeToggle', theme);
+}
+
+// Density (compact/comfortable)
+function setDensityPref(density) {
+    localStorage.setItem('financeDensity', density);
+    document.documentElement.setAttribute('data-density', density);
+    updateToggleGroup('densityToggle', density);
+}
+
+// Privacy
+function setPrivacyPref(hidden) {
+    localStorage.setItem('financePrivacyMode', hidden ? '1' : '0');
+    if (hidden) document.body.classList.add('privacy-mode');
+    else document.body.classList.remove('privacy-mode');
+    updateToggleGroup('privacyToggleProfile', hidden ? 'on' : 'off');
+}
+
+// Sync toggles with saved state on load
+(function() {
+    const isDark = localStorage.getItem('financeDarkMode') === '1';
+    updateToggleGroup('themeToggle', isDark ? 'dark' : 'light');
+
+    const density = localStorage.getItem('financeDensity') || 'comfortable';
+    updateToggleGroup('densityToggle', density);
+    document.documentElement.setAttribute('data-density', density);
+
+    const isPrivate = localStorage.getItem('financePrivacyMode') === '1';
+    updateToggleGroup('privacyToggleProfile', isPrivate ? 'on' : 'off');
+})();
+</script>
+{% endblock %}

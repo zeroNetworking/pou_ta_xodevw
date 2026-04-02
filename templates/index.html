@@ -6,15 +6,18 @@
         <h1 class="page-title">Dashboard</h1>
         <p class="page-sub">Επισκόπηση οικονομικών</p>
     </div>
-    <button class="btn btn-primary" onclick="openNewMonthModal()">＋ Νέος Μήνας</button>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="openNewMonthModal()">➕ Νέος Μήνας</button>
+    </div>
 </div>
 
-<!-- Αναζήτηση μέσα στο Dashboard -->
+<!-- Inline search bar -->
 <div class="search-inline">
     <input type="text" id="searchInput" class="search-bar" placeholder="⌕  Αναζήτηση κινήσεων...">
     <button class="btn btn-ghost" onclick="doSearch()">Αναζήτηση</button>
 </div>
 
+<!-- Current month banner -->
 {% if current_month %}
 <div class="current-month-banner">
     <div>
@@ -25,6 +28,52 @@
 </div>
 {% endif %}
 
+<!-- ═══════════ Dashboard Summary Charts ═══════════ -->
+{% if dash and dash.monthly|length >= 1 %}
+<div class="section-title">Συνολική Εικόνα</div>
+
+<!-- All-time summary stat cards -->
+<div class="stats-grid dash-stats">
+    <div class="stat-card income-card">
+        <div class="stat-card-label">Συνολικά Έσοδα</div>
+        <div class="stat-card-value">+{{ "%.2f"|format(dash.total_income) }}€</div>
+    </div>
+    <div class="stat-card expense-card">
+        <div class="stat-card-label">Συνολικά Έξοδα</div>
+        <div class="stat-card-value">-{{ "%.2f"|format(dash.total_expense) }}€</div>
+    </div>
+    <div class="stat-card balance-card {% if dash.total_balance >= 0 %}positive{% else %}negative{% endif %}">
+        <div class="stat-card-label">Συνολικό Υπόλοιπο</div>
+        <div class="stat-card-value">{{ "%.2f"|format(dash.total_balance) }}€</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Μ.Ο. Εξόδων / Μήνα</div>
+        <div class="stat-card-value">{{ "%.2f"|format(dash.avg_expense) }}€</div>
+    </div>
+</div>
+
+<!-- Charts row: trend line + top categories bar -->
+{% if dash.monthly|length >= 2 %}
+<div class="dash-charts-row">
+    <div class="card dash-chart-card">
+        <div class="card-header">Μηνιαία Τάση</div>
+        <div class="dash-chart-body">
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
+    {% if dash.top_categories %}
+    <div class="card dash-chart-card dash-chart-small">
+        <div class="card-header">Top 5 Κατηγορίες Εξόδων</div>
+        <div class="dash-chart-body">
+            <canvas id="topCatsChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Month cards grid -->
 {% if months %}
 <div class="section-title">Όλοι οι Μήνες</div>
 <div class="months-grid">
@@ -40,13 +89,13 @@
                 <div class="stat-loading">Φόρτωση...</div>
             </div>
         </a>
-        <button class="delete-month-btn" onclick="deleteMonth({{ m.id }}, '{{ m.name }}')" title="Διαγραφή μήνα">✕</button>
+        <button class="delete-month-btn" onclick="deleteMonth({{ m.id }}, '{{ m.name|e }}')" title="Διαγραφή μήνα">✕</button>
     </div>
     {% endfor %}
 </div>
 {% else %}
 <div class="empty-state">
-    <div class="empty-icon">◈</div>
+    <div class="empty-icon">💰</div>
     <div class="empty-title">Δεν υπάρχουν μήνες</div>
     <div class="empty-sub">Δημιούργησε τον πρώτο σου μήνα για να ξεκινήσεις</div>
     <button class="btn btn-primary" onclick="openNewMonthModal()">＋ Νέος Μήνας</button>
@@ -56,32 +105,167 @@
 
 {% block scripts %}
 <script>
-function doSearch() {
-    const q = document.getElementById('searchInput').value.trim();
-    if (q) window.location.href = `/search?q=${encodeURIComponent(q)}`;
-}
-document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+    // ── Search ───────────────────────────────────────────────────
+    function doSearch() {
+        const q = document.getElementById('searchInput').value.trim();
+        if (q) window.location.href = `/search?q=${encodeURIComponent(q)}`;
+    }
+    document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 
-function deleteMonth(id, name) {
-    if (!confirm(`Διαγραφή μήνα "${name}"; Θα διαγραφούν και όλες οι κινήσεις του.`)) return;
-    fetch(`/delete_month/${id}`, {method: 'DELETE'})
-        .then(r => r.json())
-        .then(d => { if (d.success) location.reload(); });
-}
+    // ── Delete Month ─────────────────────────────────────────────
+    function deleteMonth(id, name) {
+        if (!confirm(`Διαγραφή μήνα "${name}"; Θα διαγραφούν και όλες οι κινήσεις του.`)) return;
+        apiFetch(`/delete_month/${id}`, {method: 'DELETE'})
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) location.reload();
+                else alert(d.error || 'Σφάλμα διαγραφής');
+            })
+            .catch(e => { console.error(e); alert('Σφάλμα σύνδεσης'); });
+    }
 
-document.querySelectorAll('.month-card').forEach(card => {
-    const id = card.dataset.monthId;
-    fetch(`/api/month_stats/${id}`)
-        .then(r => r.json())
-        .then(s => {
-            const el = document.getElementById(`stats-${id}`);
-            const balClass = s.balance >= 0 ? 'positive' : 'negative';
-            el.innerHTML = `
+    // ── Async month card stats ───────────────────────────────────
+    document.querySelectorAll('.month-card').forEach(card => {
+        const id = card.dataset.monthId;
+        fetch(`/api/month_stats/${id}`)
+            .then(r => r.json())
+            .then(s => {
+                const el = document.getElementById(`stats-${id}`);
+                if (s.error) { el.innerHTML = '<div class="stat-loading">—</div>'; return; }
+                const balClass = s.balance >= 0 ? 'positive' : 'negative';
+                el.innerHTML = `
                 <div class="stat-row"><span class="stat-label">Έσοδα</span><span class="stat-val income">+${s.total_income.toFixed(2)}€</span></div>
                 <div class="stat-row"><span class="stat-label">Έξοδα</span><span class="stat-val expense">-${s.total_expense.toFixed(2)}€</span></div>
                 <div class="stat-row stat-row-balance"><span class="stat-label">Υπόλοιπο</span><span class="stat-val ${balClass}">${s.balance.toFixed(2)}€</span></div>
             `;
+            });
+    });
+
+    // ── Dashboard Charts ─────────────────────────────────────────
+    {% if dash and dash.monthly|length >= 2 %}
+
+    const dashData = {{ dash.monthly | tojson }};
+    const catColors = {{ cat_colors | tojson }};
+
+    // Trend chart: income vs expense vs balance line chart over time
+    const trendCtx = document.getElementById('trendChart');
+    if (trendCtx) {
+        new Chart(trendCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: dashData.map(m => m.name),
+                datasets: [
+                    {
+                        label: 'Έσοδα',
+                        data: dashData.map(m => m.income),
+                        borderColor: '#3a7d44',
+                        backgroundColor: 'rgba(58,125,68,0.08)',
+                        borderWidth: 2.5,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    },
+                    {
+                        label: 'Έξοδα',
+                        data: dashData.map(m => m.expense),
+                        borderColor: '#8b3a3a',
+                        backgroundColor: 'rgba(139,58,58,0.08)',
+                        borderWidth: 2.5,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    },
+                    {
+                        label: 'Υπόλοιπο',
+                        data: dashData.map(m => m.balance),
+                        borderColor: '#9CAB84',
+                        backgroundColor: 'transparent',
+                        borderWidth: 1.5,
+                        borderDash: [6, 3],
+                        tension: 0.3,
+                        fill: false,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        labels: { usePointStyle: true, padding: 16, font: { size: 12 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)}€`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.06)' },
+                        ticks: { callback: v => v.toLocaleString('el') + '€' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { maxRotation: 45 }
+                    }
+                }
+            }
         });
-});
+    }
+
+    // Top categories horizontal bar chart
+    {% if dash.top_categories %}
+    const topCatsCtx = document.getElementById('topCatsChart');
+    if (topCatsCtx) {
+        const topCats = {{ dash.top_categories | tojson }};
+        const barColors = topCats.map(c => catColors[c.category] || '#95A5A6');
+
+        new Chart(topCatsCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: topCats.map(c => c.category),
+                datasets: [{
+                    data: topCats.map(c => c.total),
+                    backgroundColor: barColors,
+                    borderRadius: 4,
+                    barThickness: 24,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${ctx.raw.toFixed(2)}€`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.04)' },
+                        ticks: { callback: v => v.toLocaleString('el') + '€' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11 } }
+                    }
+                }
+            }
+        });
+    }
+    {% endif %}
+
+    {% endif %}
 </script>
 {% endblock %}

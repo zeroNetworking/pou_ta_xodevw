@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Εγγραφή — Finance Manager</title>
+    <title>Εγγραφή — Που τα ξοδεύω</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -11,22 +11,27 @@
 <body class="auth-body">
 <div class="auth-wrap">
     <div class="auth-card">
+        <!-- Brand header matching the login page layout -->
         <div class="auth-brand">
-            <span class="auth-icon">◈</span>
-            <span class="auth-title">Finance Manager</span>
+            <span class="auth-icon">💰</span>
+            <span class="auth-title">Που τα ξοδεύω</span>
         </div>
         <h2 class="auth-heading">Δημιουργία Λογαριασμού</h2>
 
+        <!-- Server-side validation errors from Flask (e.g. username taken, weak password) -->
         {% if errors %}
         <div class="auth-errors">
             {% for e in errors %}<div class="auth-error">{{ e }}</div>{% endfor %}
         </div>
         {% endif %}
 
+        <!-- onsubmit runs client-side validation before the form is submitted to Flask -->
         <form method="POST" action="/register" class="auth-form" onsubmit="return validateForm()">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label>Username <span class="label-hint">(8–12 χαρακτήρες)</span></label>
                 <input type="text" name="username" id="regUser" placeholder="π.χ. AlexPapad1" minlength="8" maxlength="12" required>
+                <!-- Real-time hint shown as the user types (populated by JS below) -->
                 <div class="field-hint" id="userHint"></div>
             </div>
             <div class="form-group">
@@ -35,6 +40,7 @@
                     <input type="password" name="password" id="regPw" placeholder="••••••••" required>
                     <button type="button" class="pw-toggle" onclick="togglePw('regPw', this)">👁</button>
                 </div>
+                <!-- Live password strength indicator updated on every keystroke -->
                 <div class="pw-strength" id="pwStrength"></div>
             </div>
             <div class="form-group">
@@ -43,6 +49,7 @@
                     <input type="password" name="confirm" id="regConfirm" placeholder="••••••••" required>
                     <button type="button" class="pw-toggle" onclick="togglePw('regConfirm', this)">👁</button>
                 </div>
+                <!-- Shows "match" or "no match" feedback in real time -->
                 <div class="field-hint" id="confirmHint"></div>
             </div>
             <button type="submit" class="btn btn-primary auth-btn">Δημιουργία Λογαριασμού</button>
@@ -53,6 +60,7 @@
     </div>
 </div>
 <script>
+// Toggles a password field between hidden and visible
 function togglePw(id, btn) {
     const el = document.getElementById(id);
     el.type = el.type === 'password' ? 'text' : 'password';
@@ -61,6 +69,8 @@ function togglePw(id, btn) {
 
 const pwEl = document.getElementById('regPw');
 const strengthEl = document.getElementById('pwStrength');
+
+// Live password strength checker: scores 0–4 based on length, uppercase, digit, symbol
 pwEl.addEventListener('input', function() {
     const v = this.value;
     let score = 0, tips = [];
@@ -70,15 +80,18 @@ pwEl.addEventListener('input', function() {
     if (/[^A-Za-z0-9]/.test(v)) score++; else tips.push('σύμβολο (!@#...)');
     const labels = ['','Αδύναμος','Μέτριος','Καλός','Ισχυρός'];
     const colors = ['','#e74c3c','#f39c12','#3498db','#27ae60'];
+    // Show strength label in color + a list of missing requirements
     strengthEl.innerHTML = v.length ? `<span style="color:${colors[score]}">${labels[score]}</span>${tips.length ? ' — λείπει: '+tips.join(', ') : ' ✓'}` : '';
 });
 
+// Real-time confirm password match indicator
 document.getElementById('regConfirm').addEventListener('input', function() {
     const hint = document.getElementById('confirmHint');
     hint.textContent = this.value === pwEl.value ? '✓ Ταιριάζουν' : '✕ Δεν ταιριάζουν';
     hint.style.color = this.value === pwEl.value ? '#27ae60' : '#e74c3c';
 });
 
+// Final client-side validation before form submission (mirrors server-side rules)
 function validateForm() {
     const u = document.getElementById('regUser').value;
     const p = pwEl.value;

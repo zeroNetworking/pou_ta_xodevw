@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Εγγραφή — Που τα ξοδεύω</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-body">
+<div class="auth-wrap">
+    <div class="auth-card">
+        <!-- Brand header matching the login page layout -->
+        <div class="auth-brand">
+            <span class="auth-icon">💰</span>
+            <span class="auth-title">Που τα ξοδεύω</span>
+        </div>
+        <h2 class="auth-heading">Δημιουργία Λογαριασμού</h2>
+
+        <!-- Server-side validation errors from Flask (e.g. username taken, weak password) -->
+        {% if errors %}
+        <div class="auth-errors">
+            {% for e in errors %}<div class="auth-error">{{ e }}</div>{% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- onsubmit runs client-side validation before the form is submitted to Flask -->
+        <form method="POST" action="/register" class="auth-form" onsubmit="return validateForm()">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label>Username <span class="label-hint">(8–12 χαρακτήρες)</span></label>
+                <input type="text" name="username" id="regUser"
+                       value="{{ form_data.username }}"
+                       placeholder="π.χ. AlexPapad1"
+                       minlength="8" maxlength="12" required>
+                <div class="field-hint" id="userHint"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Κωδικός <span class="label-hint">(8+, κεφαλαίο, αριθμός, σύμβολο)</span></label>
+                <div class="pw-wrap">
+                    <input type="password" name="password" id="regPw" placeholder="••••••••" required>
+                    <button type="button" class="pw-toggle" onclick="togglePw('regPw', this)">👁</button>
+                </div>
+                <div class="pw-strength" id="pwStrength"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Επιβεβαίωση Κωδικού</label>
+                <div class="pw-wrap">
+                    <input type="password" name="confirm" id="regConfirm" placeholder="••••••••" required>
+                    <button type="button" class="pw-toggle" onclick="togglePw('regConfirm', this)">👁</button>
+                </div>
+                <div class="field-hint" id="confirmHint"></div>
+            </div>
+
+            <!--
+                Recovery question + answer.
+                Used later from /forgot if the user loses their password.
+                The answer is hashed (PBKDF2) just like the password — server
+                never stores it in plaintext.
+            -->
+            <div class="auth-section-divider">Ανάκτηση Κωδικού</div>
+
+            <div class="form-group">
+                <label>Ερώτηση Ασφαλείας</label>
+                <select name="recovery_question" id="regRecQ" required>
+                    {% for q in recovery_questions %}
+                    <option value="{{ q }}"
+                        {% if q == form_data.recovery_question %}selected{% endif %}>
+                        {{ q }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="field-hint">
+                    Θα τη χρειαστείς αν ξεχάσεις τον κωδικό σου.
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Απάντηση <span class="label-hint">(3–100 χαρακτήρες)</span></label>
+                <input type="text" name="recovery_answer" id="regRecA"
+                       placeholder="Η απάντησή σου"
+                       minlength="3" maxlength="100"
+                       autocomplete="off" required>
+                <div class="field-hint">
+                    Η απάντηση είναι case-insensitive (κεφαλαία/πεζά δεν παίζουν ρόλο).
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary auth-btn">Δημιουργία Λογαριασμού</button>
+        </form>
+        <div class="auth-footer">
+            Έχεις ήδη λογαριασμό; <a href="/login">Σύνδεση</a>
+        </div>
+    </div>
+</div>
+<script>
+// Toggles a password field between hidden and visible
+function togglePw(id, btn) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+
+const pwEl = document.getElementById('regPw');
+const strengthEl = document.getElementById('pwStrength');
+
+// Live password strength checker: scores 0–4 based on length, uppercase, digit, symbol
+pwEl.addEventListener('input', function() {
+    const v = this.value;
+    let score = 0, tips = [];
+    if (v.length >= 8) score++; else tips.push('8+ χαρακτήρες');
+    if (/[A-Z]/.test(v)) score++; else tips.push('κεφαλαίο γράμμα');
+    if (/[0-9]/.test(v)) score++; else tips.push('αριθμό');
+    if (/[^A-Za-z0-9]/.test(v)) score++; else tips.push('σύμβολο (!@#...)');
+    const labels = ['','Αδύναμος','Μέτριος','Καλός','Ισχυρός'];
+    const colors = ['','#e74c3c','#f39c12','#3498db','#27ae60'];
+    strengthEl.innerHTML = v.length
+        ? `<span style="color:${colors[score]}">${labels[score]}</span>${tips.length ? ' — λείπει: '+tips.join(', ') : ' ✓'}`
+        : '';
+});
+
+// Real-time confirm password match indicator
+document.getElementById('regConfirm').addEventListener('input', function() {
+    const hint = document.getElementById('confirmHint');
+    hint.textContent = this.value === pwEl.value ? '✓ Ταιριάζουν' : '✕ Δεν ταιριάζουν';
+    hint.style.color = this.value === pwEl.value ? '#27ae60' : '#e74c3c';
+});
+
+// Final client-side validation before submit. Mirrors the server-side rules,
+// but server still re-checks — never trust the client.
+function validateForm() {
+    const u = document.getElementById('regUser').value;
+    const p = pwEl.value;
+    const c = document.getElementById('regConfirm').value;
+    const a = document.getElementById('regRecA').value.trim();
+
+    if (u.length < 8 || u.length > 12) { alert('Username 8–12 χαρακτήρες'); return false; }
+    if (!/[A-Z]/.test(p) || !/[0-9]/.test(p) || !/[^A-Za-z0-9]/.test(p) || p.length < 8) {
+        alert('Ο κωδικός δεν πληροί τις απαιτήσεις'); return false;
+    }
+    if (p !== c) { alert('Οι κωδικοί δεν ταιριάζουν'); return false; }
+    if (a.length < 3) { alert('Η απάντηση ανάκτησης πρέπει να έχει 3+ χαρακτήρες'); return false; }
+    return true;
+}
+</script>
+</body>
+</html>

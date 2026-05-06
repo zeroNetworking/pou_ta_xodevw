@@ -1,0 +1,70 @@
+# ──────────────────────────────────────────────────────────────────────────────
+#  Που τα ξοδεύω — Docker Compose
+# ──────────────────────────────────────────────────────────────────────────────
+#  Quick reference:
+#    docker compose up -d --build     # Build + start in background
+#    docker compose down              # Stop + remove containers
+#    docker compose logs -f           # Tail logs (Ctrl+C to exit)
+#    docker compose restart           # Restart without rebuild
+#    docker compose ps                # See container status
+#    docker compose exec finance sh   # Shell into the running container
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  finance:
+    build: .
+    image: pou-ta-xodevw:latest
+    container_name: pou-ta-xodevw
+
+    # Auto-restart unless we explicitly stop it. Survives reboots.
+    restart: unless-stopped
+
+    # Host:Container port mapping. App listens on 5000 inside the
+    # container; we expose it on 5001 on the host so it doesn't
+    # clash with anything else dev-related on 5000.
+    ports:
+      - "5001:5000"
+
+    # Persistent storage. Bind mount: ο φάκελος του host είναι
+    # directly visible στο container. Πλεονεκτήματα:
+    #   - Backup με απλό cp/rsync από τον host
+    #   - Inspect/edit της βάσης με sqlite3 cli από τον host
+    #   - Φαίνεται καθαρά πού κάθεται το data
+    # Σημείωση: ο host φάκελος ΠΡΕΠΕΙ να ανήκει σε UID 1000 (τον non-root
+    # user "finance" μέσα στο container), αλλιώς θα πάρεις permission denied.
+    #   sudo chown -R 1000:1000 /home/storage/Docker_images/finance_app/data
+    volumes:
+      - /home/storage/Docker_images/finance_app/data:/app/data
+
+    environment:
+      # SECRET_KEY MUST come from a .env file or shell env — no fallback.
+      # If unset, the app refuses to start (PRODUCTION=1 inside the image).
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in .env or shell}
+      - DATABASE_PATH=/app/data/database.db
+      - DEBUG=0
+      - PRODUCTION=1
+
+    # Health check — Docker pings this every 30s. If it fails 3 times
+    # in a row, the container is marked unhealthy. Combined with
+    # restart:unless-stopped, this gives basic auto-recovery.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/now', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+    # Resource limits — prevents a runaway worker from eating
+    # the whole host. Tweak if your VPS is bigger/smaller.
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+    # Logging: rotate logs so they don't fill the disk over time.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

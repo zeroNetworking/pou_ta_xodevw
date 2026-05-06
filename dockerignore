@@ -1,0 +1,51 @@
+# Don't bake local dev artifacts, secrets, or VCS metadata into the image.
+# Each entry below is excluded from the Docker build context.
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments — venv lives inside the image, not in source
+venv/
+env/
+.venv/
+ENV/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Local DB & logs — these belong in the volume, not the image
+*.db
+*.sqlite
+*.sqlite3
+finance_app.log
+*.log
+
+# VCS
+.git/
+.gitignore
+.github/
+
+# Local secrets — NEVER bake these into images
+.env
+.env.local
+.env.*.local
+
+# Docs / scaffolding
+README.md
+*.md
+test_*.py
+tests/
+
+# OS junk
+Thumbs.db
+ehthumbs.db

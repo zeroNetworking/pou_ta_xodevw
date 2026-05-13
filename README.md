@@ -217,6 +217,18 @@ All events are written to `finance_app.log` and printed to the console. Logged e
 
 ---
 
+
+
+
+
+<img width="1920" height="924" alt="Screenshot_20260402_073239" src="https://github.com/user-attachments/assets/01f2384b-bbcf-4d71-b54f-32846109abe4" />
+<img width="1916" height="920" alt="Screenshot_20260402_073219" src="https://github.com/user-attachments/assets/d0b6b3a1-7bd2-4dd6-adb1-19d5a564cc45" />
+<img width="1920" height="923" alt="Screenshot_20260402_073012" src="https://github.com/user-attachments/assets/893d714f-fac6-4905-acad-47061d582724" />
+<img width="1920" height="926" alt="Screenshot_20260402_072934" src="https://github.com/user-attachments/assets/813d3f82-001a-4b83-a939-df5384739330" />
+<img width="1920" height="923" alt="Screenshot_20260402_072836" src="https://github.com/user-attachments/assets/02b677b9-4bb2-4c59-8928-3cfa65f4a1a0" />
+<img width="1920" height="924" alt="Screenshot_20260402_072735" src="https://github.com/user-attachments/assets/115c9df9-3d57-47f8-9d9f-142cf7fc1082" />
+
+
 ## License
 
 Personal project. All rights reserved.
